@@ -1,3 +1,4 @@
+import os
 import sys
 
 dir = 'C:/Users/m.jenin/Documents/marius/shader_maker'
@@ -28,12 +29,16 @@ def unload_packages(silent=True, packages=None):
                 if not silent:
                     print("Unloaded: %s" % i)
         except:
-            print("Failed to unload: %s" % i)
+            pass
 
 
 from ShaderMaker import ShaderMaker
+from Shader import Shader
 
 if __name__ == '__main__':
-    unload_packages(silent=True, packages=["ShaderMaker", "TextureAssignField", "TextureFolderAssignShader"])
+    unload_packages(silent=True, packages=["ShaderMaker", "Shader"])
+    # walk = os.walk("I:/battlestar_2206/assets\ch_panda/textures/02/panda_02_textures")
+    # for w in walk:
+    #     print(w[0])
     ltp = ShaderMaker()
     ltp.show()
