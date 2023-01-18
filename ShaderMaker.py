@@ -1,7 +1,9 @@
 import os
+import re
 from functools import partial
+from enum import Enum
 
-# import maya.cmds as cmds
+from pymel.core import *
 import maya.OpenMayaUI as omui
 
 from PySide2 import QtCore
@@ -11,6 +13,14 @@ from PySide2 import QtWidgets
 from shiboken2 import wrapInstance
 
 from Shader import Shader, ShaderField
+import utils
+
+
+class Assignation(Enum):
+    NoAssign = 1
+    AutoAssign = 2
+    AssignToSelection = 3
+
 
 # CS mean create shaders part
 # US mean update shaders part
@@ -21,8 +31,9 @@ class ShaderMaker(QtWidgets.QDialog):
 
         # Model attributes
         self.__cs_folder_path = ""
-        self.__us_folder_path = ""
         self.__cs_shaders = []
+        self.__assign_cs = Assignation.AutoAssign
+        self.__us_folder_path = ""
 
         # UI attributes
         self.__reinit_ui()
@@ -36,12 +47,8 @@ class ShaderMaker(QtWidgets.QDialog):
 
         # Create the layout, linking it to actions and refresh the display
         self.__create_ui()
+        self.__update_ui()
         self.__refresh_btn()
-
-    # Retrieve the selected object in maya
-    def __retrieve_selected(self):
-        # TODO
-        pass
 
     # Reinitialize the ui in order to repopulate it
     def __reinit_ui(self):
@@ -50,14 +57,17 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__ui_cs_submit_btn = None
         self.__ui_us_submit_btn = None
         self.__ui_shaders_cs_lyt = None
+        self.__auto_assign_radio = None
+        self.__assign_to_selection_radio = None
+        self.__no_assign_radio = None
 
     # Refresh the state of buttons
     def __refresh_btn(self):
-        # TODO
-        if self.__ui_cs_submit_btn is not None:
-            self.__ui_cs_submit_btn.setEnabled(len(self.__cs_folder_path) > 0)
-        if self.__ui_us_submit_btn is not None:
-            self.__ui_us_submit_btn.setEnabled(len(self.__us_folder_path) > 0)
+        self.__ui_cs_submit_btn.setEnabled(len(self.__cs_shaders) > 0)
+        self.__ui_us_submit_btn.setEnabled(False)  # TODO
+        self.__assign_to_selection_radio.setEnabled(len(self.__cs_shaders) <= 1)
+        if self.__assign_cs == Assignation.AssignToSelection:
+            self.__auto_assign_radio.setChecked(True)
 
     def __browse_cs_folder(self):
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(
@@ -75,9 +85,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __create_ui(self):
         # Reinit attributes of the UI
         self.__reinit_ui()
-        width = 720
-        height = 800
-        self.setFixedSize(width, height)
+        self.setFixedSize(720, 800)
         self.move(QtWidgets.QDesktopWidget().availableGeometry().center() - self.frameGeometry().center())
 
         # Some aesthetic value
@@ -87,7 +95,7 @@ class ShaderMaker(QtWidgets.QDialog):
 
         # Main Layout
         main_lyt = QtWidgets.QVBoxLayout()
-        main_lyt.setContentsMargins(10, 15, 10, 10)
+        main_lyt.setContentsMargins(10, 15, 10, 15)
         main_lyt.setSpacing(20)
         self.setLayout(main_lyt)
 
@@ -129,14 +137,35 @@ class ShaderMaker(QtWidgets.QDialog):
 
         # Layout ML.1.3 : Submit creation
         submit_creation_lyt = QtWidgets.QHBoxLayout()
+        submit_creation_lyt.setAlignment(QtCore.Qt.AlignCenter)
         cs_lyt.addLayout(submit_creation_lyt)
-        auto_assign_checkbox = QtWidgets.QCheckBox("Auto-assign by shader name")
-        auto_assign_checkbox.setChecked(True)
-        submit_creation_lyt.addWidget(auto_assign_checkbox, 0, QtCore.Qt.AlignRight)
+
+        button_group_lyt = QtWidgets.QHBoxLayout()
+        button_group_lyt.setAlignment(QtCore.Qt.AlignRight)
+        button_group_cs = QtWidgets.QButtonGroup()
+        self.__auto_assign_radio = QtWidgets.QRadioButton("Replace by shader name")
+        self.__auto_assign_radio.setChecked(True)
+        self.__assign_to_selection_radio = QtWidgets.QRadioButton("Assign to selection")
+        self.__no_assign_radio = QtWidgets.QRadioButton("No assignation")
+        self.__auto_assign_radio.toggled.connect(
+            partial(self.__assign, Assignation.AutoAssign))
+        self.__assign_to_selection_radio.toggled.connect(
+            partial(self.__assign, Assignation.AssignToSelection))
+        self.__no_assign_radio.toggled.connect(
+            partial(self.__assign, Assignation.NoAssign))
+        button_group_cs.addButton(self.__auto_assign_radio)
+        button_group_cs.addButton(self.__assign_to_selection_radio)
+        button_group_cs.addButton(self.__no_assign_radio)
+        button_group_lyt.addWidget(self.__auto_assign_radio)
+        button_group_lyt.addWidget(self.__assign_to_selection_radio)
+        button_group_lyt.addWidget(self.__no_assign_radio)
+        submit_creation_lyt.addLayout(button_group_lyt)
+
         self.__ui_cs_submit_btn = QtWidgets.QPushButton("Create shaders")
         self.__ui_cs_submit_btn.setFixedSize(size_btn)
         self.__ui_cs_submit_btn.setEnabled(False)
-        submit_creation_lyt.addWidget(self.__ui_cs_submit_btn, 0, QtCore.Qt.AlignLeft)
+        self.__ui_cs_submit_btn.clicked.connect(self.__submit_create_shader)
+        submit_creation_lyt.addWidget(self.__ui_cs_submit_btn)
 
         # Layout ML.2.1 : Folder
         folder_us_lyt = QtWidgets.QHBoxLayout()
@@ -160,57 +189,141 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__ui_us_submit_btn = QtWidgets.QPushButton("Update shaders")
         self.__ui_us_submit_btn.setFixedSize(size_btn)
         self.__ui_us_submit_btn.setEnabled(False)
+        self.__ui_us_submit_btn.clicked.connect(self.__submit_update_shader())
         us_lyt.addWidget(self.__ui_us_submit_btn, 0, QtCore.Qt.AlignHCenter)
 
     def __update_ui(self):
         self.__refresh_btn()
-        if self.__cs_folder_path is not None:
-            self.__ui_cs_folder_path.setText(self.__cs_folder_path)
-        if self.__us_folder_path is not None:
-            self.__ui_us_folder_path.setText(self.__us_folder_path)
+        self.__ui_cs_folder_path.setText(self.__cs_folder_path)
+        self.__ui_us_folder_path.setText(self.__us_folder_path)
 
+        nb_shaders = len(self.__cs_shaders)
         if self.__ui_shaders_cs_lyt is not None:
+            utils.clear_layout(self.__ui_shaders_cs_lyt)
             grid_shaders = QtWidgets.QGridLayout()
             scroll_area = QtWidgets.QScrollArea()
             scroll_area.setWidgetResizable(True)
-            scroll_area.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
             scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+            grid_shaders.setAlignment(QtCore.Qt.AlignTop)
             scroll_area_widget = QtWidgets.QWidget()
             scroll_area.setWidget(scroll_area_widget)
             scroll_area_widget.setLayout(grid_shaders)
             self.__ui_shaders_cs_lyt.addWidget(scroll_area)
-
-            index_row = 0
-            index_col = 0
-            nb_col = 3
-            for shader in self.__cs_shaders:
-                shader.populate(grid_shaders,index_row, index_col)
-                if index_col == nb_col - 1:
-                    index_col = 0
-                    index_row += 1
+            if nb_shaders > 0:
+                index_row = 0
+                index_col = 0
+                nb_col = 3
+                if nb_shaders < nb_col:
+                    max_size_elem = (680 - (nb_shaders - 1) * 15) / nb_shaders
                 else:
-                    index_col += 1
+                    max_size_elem = (680 - (nb_col - 1) * 15) / nb_col
+
+                for shader in self.__cs_shaders:
+                    shader.populate(grid_shaders, index_row, index_col, max_size_elem)
+                    if index_col == nb_col - 1:
+                        index_col = 0
+                        index_row += 1
+                    else:
+                        index_col += 1
 
     # Refresh UI and model attribute when folder cs changes
     def __on_folder_cs_changed(self):
         folder_path = self.__ui_cs_folder_path.text()
-        self.__cs_folder_path = folder_path if os.path.isdir(folder_path) else ""
+        self.__cs_folder_path = folder_path
         self.__load_cs_shaders()
         self.__update_ui()
 
     # Refresh UI and model attribute when folder us changes
     def __on_folder_us_changed(self):
         folder_path = self.__ui_us_folder_path.text()
-        self.__us_folder_path = folder_path if os.path.isdir(folder_path) else ""
+        self.__us_folder_path = folder_path
         self.__update_ui()
 
     def __load_cs_shaders(self):
-        walk = list(os.walk("I:/battlestar_2206/assets\ch_panda/textures/02/panda_02_textures"))
         self.__cs_shaders.clear()
-        for i in range(len(walk)-1):
-            shader = Shader(walk[0][1][i])
-            shader.load(walk[i+1][0])
-            self.__cs_shaders.append(shader)
+        if not os.path.isdir(self.__cs_folder_path):
+            return
+        child_dir = os.listdir(self.__cs_folder_path)
+        list_dir = []
+        has_exr = False
+        for child in child_dir:
+            if os.path.isdir(self.__cs_folder_path + "/" + child):
+                list_dir.append(child)
+            else:
+                if re.match(r".*\.exr", child):
+                    has_exr = True
+
+        if len(list_dir) == 0:
+            # If the folder is a shader folder
+            if has_exr:
+                shader = Shader(os.path.basename(self.__cs_folder_path))
+                shader.load(self.__cs_folder_path)
+                self.__cs_shaders.append(shader)
+        else:
+            # If the folder is a folder of shader folder
+            for dir in list_dir:
+                dir_path = self.__cs_folder_path + "/" + dir
+                has_exr_2 = False
+                child_dir_2 = os.listdir(dir_path)
+                for child in child_dir_2:
+                    if re.match(r".*\.exr", child):
+                        has_exr_2 = True
+                        break
+                if has_exr_2:
+                    shader = Shader(dir)
+                    shader.load(dir_path)
+                    self.__cs_shaders.append(shader)
+
+    def __submit_create_shader(self):
+        if self.__assign_cs == Assignation.AutoAssign:  # AutoAssign
+            # Generate new shader
+            shading_nodes = {}
+            for shader in self.__cs_shaders:
+                arnold_node, displacement_shader = shader.generate_shading_nodes()
+                shading_nodes[shader.get_title()] = {arnold_node, displacement_shader}
+            # Get all the shading groups to reassign
+            to_reassign = {}
+            selection = ls(materials=True)
+            for s in selection:
+                for shader in self.__cs_shaders:
+                    if shader.get_title() == s.name():
+                        shading_groups = s.listConnections(type="shadingEngine")
+                        for shading_group in shading_groups:
+                            if shading_group not in to_reassign:
+                                to_reassign[shading_group] = shader.get_title()
+                                break
+            # Reassign the right to each shading group
+            for shading_group, shader_title in to_reassign.items():
+                delete(shading_group.surfaceShader.listConnections()[0])
+                arnold_node, displacement_shader = shading_nodes[shader_title]
+                arnold_node.outColor >> shading_group.surfaceShader
+                displacement_shader.displacement >> shading_group.displacementShader
+
+        elif self.__assign_cs == Assignation.AssignToSelection:  # AssignToSelection
+            selection = ls(sl=True, transforms=True)
+            # Create a new shading group
+            shading_group = sets(name="SG", empty=True, renderable=True, noSurfaceShader=True)
+            # Generate new shader and assign to shading group
+            for shader in self.__cs_shaders:
+                arnold_node, displacement_shader = shader.generate_shading_nodes()
+                arnold_node.outColor >> shading_group.surfaceShader
+                displacement_shader.displacement >> shading_group.displacementShader
+            # Assign the object in the shading group
+            for obj in selection:
+                sets(shading_group, forceElement=obj)
+        else:  # NoAssignation
+            # Generate new shader
+            for shader in self.__cs_shaders:
+                shader.generate_shading_nodes()
+
+    def __submit_update_shader(self):
+        # TODO
+        pass
+
+    def __assign(self, assign_type, enabled):
+        if enabled:
+            self.__assign_cs = assign_type
+
 
 if __name__ == '__main__':
     ltp = ShaderMaker()

@@ -2,18 +2,20 @@ import os
 from os.path import isfile, join
 import re
 
+from pymel.core import *
+
 from PySide2 import QtCore
 from PySide2 import QtGui
 from PySide2 import QtWidgets
 
+
+# from PIL.ImageQt import ImageQt as PilImageQt
+# import OpenEXR, Imath, Image
+
 class ShaderField:
-    def __init__(self, title, rule):
-        self.__title = title
+    def __init__(self, rule):
         self.__regexp = re.compile(rule)
         self.__file_name = ""
-
-    def get_title(self):
-        return self.__title
 
     def get_file_name(self):
         return self.__file_name
@@ -27,49 +29,150 @@ class ShaderField:
 
 class Shader:
     def __init__(self, title):
-        self.__shader_fields = [
-            ShaderField("BaseColor", r".*(BaseColor).*\.exr"),
-            ShaderField("Normal", r"((?!Combine).)*(Normal)((?!Combine).)*\.exr"),
-            ShaderField("Height", r".*(Height).*\.exr"),
-            ShaderField("Roughness", r".*(Roughness).*\.exr"),
-            ShaderField("Metalness", r".*(Metalness).*\.exr"),
-        ]
+        self.__shader_fields = {
+            "BaseColor": ShaderField(r".*(BaseColor).*\.exr"),
+            "Normal": ShaderField(r"((?!Combine).)*(Normal)((?!Combine).)*\.exr"),
+            "Height": ShaderField(r".*(Height).*\.exr"),
+            "Roughness": ShaderField(r".*(Roughness).*\.exr"),
+            "Metalness": ShaderField(r".*(Metalness).*\.exr"),
+        }
         self.__title = title
+        print(title)
+        self.__ui_field_path = None
+        self.__image_label = None
+
+    def get_title(self):
+        return self.__title
 
     def load(self, folder_path):
         files_name_list = [f for f in os.listdir(folder_path) if
                            isfile(join(folder_path, f)) and re.match(r".*\.[exr]", f)]
 
-        for field in self.__shader_fields:
+        for keyword, field in self.__shader_fields.items():
             regexp = re.compile(field.get_regexp())
             for file_name in files_name_list:
                 if re.match(regexp, file_name):
-                    field.set_file_name(file_name)
+                    field.set_file_name(folder_path + "/" + file_name)
                     break
 
     def print(self):
-        for field in self.__shader_fields:
-            print(field.get_title()+" "+field.get_file_name())
+        for keyword, field in self.__shader_fields:
+            print(keyword + " " + field.get_file_name())
 
-    def populate(self, layout, index_row, index_col):
+    def populate(self, layout, index_row, index_col, max_size):
         shader_card = QtWidgets.QVBoxLayout()
         shader_card.setMargin(5)
         frame_shader_card = QtWidgets.QFrame()
         frame_shader_card.setLayout(shader_card)
         frame_shader_card.setFrameShape(QtWidgets.QFrame.StyledPanel)
         frame_shader_card.setFrameShadow(QtWidgets.QFrame.Plain)
-        shader_title = QtWidgets.QLabel(self.__title)
-        shader_title.setFont(QtGui.QFont('MS Sans Serif', 10))
-        shader_title.setStyleSheet("font-weight:bold")
-        shader_title.setMargin(5)
-        shader_title.setAlignment(QtCore.Qt.AlignTop | QtCore.Qt.AlignHCenter)
-        shader_card.addWidget(shader_title)
-        combobox = QtWidgets.QComboBox()
-        for field in self.__shader_fields:
-            if len(field.get_file_name()) > 0 :
-                combobox.addItem(field.get_title())
 
+        shader_title = QtWidgets.QLabel(self.__title + self.__title)
+        shader_title.setMaximumWidth(max_size - 10)
+        shader_title.setAlignment(QtCore.Qt.AlignCenter)
+        shader_title.setMargin(5)
+        shader_card.addWidget(shader_title)
+
+        # self.__image_label = QtWidgets.QLabel()
+        # shader_card.addWidget(self.__image_label)
+
+
+        combobox = QtWidgets.QComboBox()
+        combobox.activated[str].connect(self.on_combo_field_changed)
 
         shader_card.addWidget(combobox)
+        self.__ui_field_path = QtWidgets.QLineEdit()
+        self.__ui_field_path.setReadOnly(True)
+        shader_card.addWidget(self.__ui_field_path)
+
+        first = True
+        for keyword, field in self.__shader_fields.items():
+            if len(field.get_file_name()) > 0:
+                if first:
+                    self.on_combo_field_changed(keyword)
+                    first = False
+                combobox.addItem(keyword)
 
         layout.addWidget(frame_shader_card, index_row, index_col)
+
+    def on_combo_field_changed(self, text):
+        file_name = self.__shader_fields[text].get_file_name()
+        self.__ui_field_path.setText(file_name)
+        # imageq = PilImageQt(exrToJpg(file_name))
+        # qimage = QtGui.QImage(imageq)
+        # pixmap = QtGui.QPixmap.fromImage(qimage)
+        # self.__image_label.setPixmap(pixmap)
+        # self.__image_label.setPixmap(pixmap)
+
+    # def exrToJpg(exrfile):
+    #     file = OpenEXR.InputFile(exrfile)
+    #     pt = Imath.PixelType(Imath.PixelType.FLOAT)
+    #     dw = file.header()['dataWindow']
+    #     size = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
+    #
+    #     rgbf = [Image.fromstring("F", size, file.channel(c, pt)) for c in "RGB"]
+    #
+    #     extrema = [im.getextrema() for im in rgbf]
+    #     darkest = min([lo for (lo, hi) in extrema])
+    #     lighest = max([hi for (lo, hi) in extrema])
+    #     scale = 255 / (lighest - darkest)
+    #
+    #     def normalize_0_255(v):
+    #         return (v * scale) + darkest
+    #
+    #     rgb8 = [im.point(normalize_0_255).convert("L") for im in rgbf]
+    #     myjpg = Image.merge("RGB", rgb8)
+    #     return myjpg
+
+    def generate_shading_nodes(self):
+        place_texture = shadingNode("place2dTexture", asUtility=True, name="place2dTexture")
+
+        arnold_node = shadingNode("aiStandardSurface", asShader=True, name=self.__title)
+
+        base_color_file_name = self.__shader_fields["BaseColor"].get_file_name()
+        roughness_file_name = self.__shader_fields["Normal"].get_file_name()
+        metalness_file_name = self.__shader_fields["Height"].get_file_name()
+        normal_file_name = self.__shader_fields["Roughness"].get_file_name()
+        height_file_name = self.__shader_fields["Metalness"].get_file_name()
+
+        # Base Color
+        if len(base_color_file_name) > 0:
+            base_color = shadingNode("file", asTexture=True, name="BaseColor")
+            base_color.fileTextureName.set(base_color_file_name)
+            place_texture.outUV >> base_color.uvCoord
+            base_color.outColor >> arnold_node.baseColor
+
+        # Roughness
+        if len(roughness_file_name) > 0:
+            roughness = shadingNode("file", asTexture=True, name="Roughness")
+            roughness.fileTextureName.set(roughness_file_name)
+            remap_value = shadingNode("remapValue", asUtility=True, name="remapValue")
+            place_texture.outUV >> roughness.uvCoord
+            roughness.outColorR >> remap_value.inputValue
+            remap_value.outValue >> arnold_node.specularRoughness
+
+        # Metalness
+        if len(metalness_file_name) > 0:
+            metalness = shadingNode("file", asTexture=True, name="Metalness")
+            metalness.fileTextureName.set(metalness_file_name)
+            place_texture.outUV >> metalness.uvCoord
+            metalness.outColorR >> arnold_node.metalness
+
+        # Normal
+        if len(normal_file_name) > 0:
+            normal = shadingNode("file", asTexture=True, name="Normal")
+            normal.fileTextureName.set(normal_file_name)
+            normal_map = shadingNode("aiNormalMap", asUtility=True, name="aiNormalMap")
+            place_texture.outUV >> normal.uvCoord
+            normal.outColor >> normal_map.input
+            normal_map.outValue >> arnold_node.normalCamera
+
+        # Height
+        displacement_shader = None
+        if len(height_file_name) > 0:
+            height = shadingNode("file", asTexture=True, name="Height")
+            height.fileTextureName.set(height_file_name)
+            displacement_shader = shadingNode("displacementShader", asUtility=True, name="displacementShader")
+            place_texture.outUV >> height.uvCoord
+            height.outColorR >> displacement_shader.displacement
+        return {arnold_node, displacement_shader}
