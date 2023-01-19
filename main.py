@@ -1,6 +1,6 @@
-import os
 import sys
 
+# TODO CHANGE PATH
 dir = 'C:/Users/m.jenin/Documents/marius/shader_maker'
 if not sys.path.__contains__(dir):
     sys.path.append('C:/Users/m.jenin/Documents/marius/shader_maker')
@@ -33,12 +33,8 @@ def unload_packages(silent=True, packages=None):
 
 
 from ShaderMaker import ShaderMaker
-from Shader import Shader
 
 if __name__ == '__main__':
     unload_packages(silent=True, packages=["ShaderMaker", "Shader"])
-    # walk = os.walk("I:/battlestar_2206/assets\ch_panda/textures/02/panda_02_textures")
-    # for w in walk:
-    #     print(w[0])
     ltp = ShaderMaker()
     ltp.show()

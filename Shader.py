@@ -8,6 +8,7 @@ from PySide2 import QtCore
 from PySide2 import QtWidgets
 
 
+# A Texture field in the shader
 class ShaderField:
     def __init__(self, rule):
         self.__regexp = re.compile(rule)
@@ -36,9 +37,11 @@ class Shader:
         self.__ui_field_path = None
         self.__image_label = None
 
+    # Getter of the title
     def get_title(self):
         return self.__title
 
+    # Load the field according to the folder
     def load(self, folder_path):
         files_name_list = [f for f in os.listdir(folder_path) if
                            isfile(join(folder_path, f)) and re.match(r".*\.[exr]", f)]
@@ -50,6 +53,7 @@ class Shader:
                     field.set_file_name(folder_path + "/" + file_name)
                     break
 
+    # Populate the ui with the data of the shader
     def populate(self, layout, index_row, index_col, max_size):
         shader_card = QtWidgets.QVBoxLayout()
         shader_card.setMargin(5)
@@ -82,10 +86,12 @@ class Shader:
 
         layout.addWidget(frame_shader_card, index_row, index_col)
 
+    # Change display filename when combobox item changed
     def on_combo_field_changed(self, text):
         file_name = self.__shader_fields[text].get_file_name()
         self.__ui_field_path.setText(file_name)
 
+    # Generate the shader according to the data of the shader
     def generate_shading_nodes(self):
         place_texture = shadingNode("place2dTexture", asUtility=True, name="place2dTexture")
 

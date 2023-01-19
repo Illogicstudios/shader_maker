@@ -1,7 +1,6 @@
 import os
 import re
 from functools import partial
-from enum import Enum
 
 from pymel.core import *
 import maya.OpenMayaUI as omui
@@ -53,17 +52,19 @@ class ShaderMaker(QtWidgets.QDialog):
 
         # Create the layout, linking it to actions and refresh the display
         self.__create_ui()
-        self.__update_ui()
+        self.__refresh_ui()
         self.__create_callback()
 
+    # Create a callback for when new Maya selection
     def __create_callback(self):
         self.__us_selection_callback = \
             OpenMaya.MEventMessage.addEventCallback("SelectionChanged", self.on_selection_changed)
 
+    # Remove callback
     def closeEvent(self, arg__1: QtGui.QCloseEvent) -> None:
         OpenMaya.MMessage.removeCallback(self.__us_selection_callback)
 
-    # Reinitialize the ui in order to repopulate it
+    # initialize the ui
     def __reinit_ui(self):
         self.__ui_cs_folder_path = None
         self.__ui_us_folder_path = None
@@ -74,19 +75,21 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__assign_to_selection_radio = None
         self.__no_assign_radio = None
 
+    # Function to browse a new foler for the creation part
     def __browse_cs_folder(self):
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(
-            self, "Select Directory", "I:/battlestar_2206/assets\ch_panda/textures/02/panda_02_textures")
+            self, "Select Directory", "I:/battlestar_2206/assets\ch_panda/textures/02/panda_02_textures") #TODO CHANGE PATH
         if len(folder_path) > 0 and folder_path != self.__cs_folder_path:
             self.__ui_cs_folder_path.setText(folder_path)
 
+    # Function to browse a new foler for the update part
     def __browse_us_folder(self):
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(
-            self, "Select Directory", "I:/battlestar_2206/assets\ch_panda/textures/02/panda_02_textures")
+            self, "Select Directory", "I:/battlestar_2206/assets\ch_panda/textures/02/panda_02_textures") #TODO CHANGE PATH
         if len(folder_path) > 0 and folder_path != self.__us_folder_path:
             self.__ui_us_folder_path.setText(folder_path)
 
-    # Create the layout
+    # Create the ui
     def __create_ui(self):
         # Reinit attributes of the UI
         self.__reinit_ui()
@@ -201,10 +204,13 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__ui_us_submit_btn.clicked.connect(self.__submit_update_shader)
         us_lyt.addWidget(self.__ui_us_submit_btn, 0, QtCore.Qt.AlignHCenter)
 
-    def __update_ui(self):
+    # Refresh the ui according to the model attribute
+    def __refresh_ui(self):
+        # Refresh browser
         self.__ui_cs_folder_path.setText(self.__cs_folder_path)
         self.__ui_us_folder_path.setText(self.__us_folder_path)
 
+        # Refresh the buttons
         if self.__ui_cs_submit_btn is not None:
             self.__ui_cs_submit_btn.setEnabled(len(self.__cs_shaders) > 0)
         if self.__assign_to_selection_radio is not None:
@@ -212,6 +218,7 @@ class ShaderMaker(QtWidgets.QDialog):
         if self.__assign_cs == Assignation.AssignToSelection and len(self.__cs_shaders) > 1:
             self.__auto_assign_radio.setChecked(True)
 
+        # Refresh the body of the creation part
         nb_shaders = len(self.__cs_shaders)
         if self.__ui_shaders_cs_lyt is not None:
             utils.clear_layout(self.__ui_shaders_cs_lyt)
@@ -241,6 +248,7 @@ class ShaderMaker(QtWidgets.QDialog):
                     else:
                         index_col += 1
 
+        # Refresh the body of the update part
         if self.__ui_tree_us_files is not None:
             self.__ui_tree_us_files.clear()
             update_btn_enabled = False
@@ -267,30 +275,33 @@ class ShaderMaker(QtWidgets.QDialog):
                     item.addChild(child)
                 item.setExpanded(True)
 
+            # Refresh the update button according to the update body
             if self.__ui_us_submit_btn is not None:
                 self.__ui_us_submit_btn.setEnabled(
                     len(self.__us_data) > 0 and os.path.isdir(self.__us_folder_path) and update_btn_enabled)
 
 
-    # Refresh UI and model attribute when folder cs changes
+    # Refresh UI and model attribute when the fodler of the creation part changes
     def __on_folder_cs_changed(self):
         folder_path = self.__ui_cs_folder_path.text()
         self.__cs_folder_path = folder_path
         self.__load_cs_shaders()
-        self.__update_ui()
+        self.__refresh_ui()
 
-    # Refresh UI and model attribute when folder us changes
+    # Refresh UI and model attribute when the fodler of the update part changes
     def __on_folder_us_changed(self):
         folder_path = self.__ui_us_folder_path.text()
         self.__us_folder_path = folder_path
         self.__generate_us_data()
-        self.__update_ui()
+        self.__refresh_ui()
 
+    # Function called by the callback of the Maya selection
     def on_selection_changed(self, *args, **kwargs):
         self.__generate_us_data()
-        self.__update_ui()
+        self.__refresh_ui()
 
-    def __get_us_shading_gorups_and_textures(self):
+    # Get the textures and the shading groups of the selection
+    def __get_us_shading_groups_and_textures(self):
         files = []
         selection = ls(sl=True, transforms=True)
         distinct_shading_groups = []
@@ -308,6 +319,7 @@ class ShaderMaker(QtWidgets.QDialog):
                 files.append({texture, shading_group})
         return files
 
+    # Get the textures from a node recursively
     def __get_textures_recursive(self, node):
         textures = []
         connections = node.listConnections(source=True, destination=False)
@@ -318,9 +330,10 @@ class ShaderMaker(QtWidgets.QDialog):
                 textures.extend(self.__get_textures_recursive(connection))
         return textures
 
+    # Generate model data for the update part
     def __generate_us_data(self):
         self.__us_data.clear()
-        for texture, shading_group in self.__get_us_shading_gorups_and_textures():
+        for texture, shading_group in self.__get_us_shading_groups_and_textures():
             dirname = os.path.dirname(texture.getAttr("fileTextureName"))
             if dirname not in self.__us_data:
                 self.__us_data[dirname] = [[], []]
@@ -329,6 +342,7 @@ class ShaderMaker(QtWidgets.QDialog):
             if shading_group not in self.__us_data[dirname][1]:
                 self.__us_data[dirname][1].append(shading_group)
 
+    # Generate the model data for the creatino part
     def __load_cs_shaders(self):
         self.__cs_shaders.clear()
         if not os.path.isdir(self.__cs_folder_path):
@@ -364,6 +378,7 @@ class ShaderMaker(QtWidgets.QDialog):
                     shader.load(dir_path)
                     self.__cs_shaders.append(shader)
 
+    # Create the shader according to the method of assignation
     def __submit_create_shader(self):
         no_items_to_assign = False
         if self.__assign_cs == Assignation.AutoAssign:  # AutoAssign
@@ -422,6 +437,7 @@ class ShaderMaker(QtWidgets.QDialog):
                 displacement_shader.displacement >> shading_group.displacementShader
                 sets(shading_group, forceElement=object)
 
+    # Delete an existing shader recursively
     def __delete_existing_shader(self, node):
         for s in node.inputs():
             if s.type() != "transform":
@@ -432,7 +448,7 @@ class ShaderMaker(QtWidgets.QDialog):
                 except:
                     pass
 
-
+    # Update file path with model datas
     def __submit_update_shader(self):
         for directory, data in self.__us_data.items():
             textures = data[0]
@@ -443,11 +459,7 @@ class ShaderMaker(QtWidgets.QDialog):
                 if child_enabled:
                     texture.fileTextureName.set(self.__us_folder_path + "/" + filename)
 
+    # Change the Assignation type
     def __assign(self, assign_type, enabled):
         if enabled:
             self.__assign_cs = assign_type
-
-
-if __name__ == '__main__':
-    ltp = ShaderMaker()
-    ltp.show()
