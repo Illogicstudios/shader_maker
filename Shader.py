@@ -5,12 +5,8 @@ import re
 from pymel.core import *
 
 from PySide2 import QtCore
-from PySide2 import QtGui
 from PySide2 import QtWidgets
 
-
-# from PIL.ImageQt import ImageQt as PilImageQt
-# import OpenEXR, Imath, Image
 
 class ShaderField:
     def __init__(self, rule):
@@ -37,7 +33,6 @@ class Shader:
             "Metalness": ShaderField(r".*(Metalness).*\.exr"),
         }
         self.__title = title
-        print(title)
         self.__ui_field_path = None
         self.__image_label = None
 
@@ -55,10 +50,6 @@ class Shader:
                     field.set_file_name(folder_path + "/" + file_name)
                     break
 
-    def print(self):
-        for keyword, field in self.__shader_fields:
-            print(keyword + " " + field.get_file_name())
-
     def populate(self, layout, index_row, index_col, max_size):
         shader_card = QtWidgets.QVBoxLayout()
         shader_card.setMargin(5)
@@ -67,15 +58,11 @@ class Shader:
         frame_shader_card.setFrameShape(QtWidgets.QFrame.StyledPanel)
         frame_shader_card.setFrameShadow(QtWidgets.QFrame.Plain)
 
-        shader_title = QtWidgets.QLabel(self.__title + self.__title)
+        shader_title = QtWidgets.QLabel(self.__title)
         shader_title.setMaximumWidth(max_size - 10)
         shader_title.setAlignment(QtCore.Qt.AlignCenter)
         shader_title.setMargin(5)
         shader_card.addWidget(shader_title)
-
-        # self.__image_label = QtWidgets.QLabel()
-        # shader_card.addWidget(self.__image_label)
-
 
         combobox = QtWidgets.QComboBox()
         combobox.activated[str].connect(self.on_combo_field_changed)
@@ -98,31 +85,6 @@ class Shader:
     def on_combo_field_changed(self, text):
         file_name = self.__shader_fields[text].get_file_name()
         self.__ui_field_path.setText(file_name)
-        # imageq = PilImageQt(exrToJpg(file_name))
-        # qimage = QtGui.QImage(imageq)
-        # pixmap = QtGui.QPixmap.fromImage(qimage)
-        # self.__image_label.setPixmap(pixmap)
-        # self.__image_label.setPixmap(pixmap)
-
-    # def exrToJpg(exrfile):
-    #     file = OpenEXR.InputFile(exrfile)
-    #     pt = Imath.PixelType(Imath.PixelType.FLOAT)
-    #     dw = file.header()['dataWindow']
-    #     size = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
-    #
-    #     rgbf = [Image.fromstring("F", size, file.channel(c, pt)) for c in "RGB"]
-    #
-    #     extrema = [im.getextrema() for im in rgbf]
-    #     darkest = min([lo for (lo, hi) in extrema])
-    #     lighest = max([hi for (lo, hi) in extrema])
-    #     scale = 255 / (lighest - darkest)
-    #
-    #     def normalize_0_255(v):
-    #         return (v * scale) + darkest
-    #
-    #     rgb8 = [im.point(normalize_0_255).convert("L") for im in rgbf]
-    #     myjpg = Image.merge("RGB", rgb8)
-    #     return myjpg
 
     def generate_shading_nodes(self):
         place_texture = shadingNode("place2dTexture", asUtility=True, name="place2dTexture")

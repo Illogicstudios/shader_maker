@@ -12,8 +12,10 @@ from PySide2 import QtWidgets
 
 from shiboken2 import wrapInstance
 
-from Shader import Shader, ShaderField
+from Shader import Shader
 import utils
+
+import maya.OpenMaya as OpenMaya
 
 
 class Assignation(Enum):
@@ -34,9 +36,13 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__cs_shaders = []
         self.__assign_cs = Assignation.AutoAssign
         self.__us_folder_path = ""
+        self.__us_data = {}
 
         # UI attributes
         self.__reinit_ui()
+
+        # Retrieve us data
+        self.__generate_us_data()
 
         # name the window
         self.setWindowTitle("Shader Maker")
@@ -48,7 +54,14 @@ class ShaderMaker(QtWidgets.QDialog):
         # Create the layout, linking it to actions and refresh the display
         self.__create_ui()
         self.__update_ui()
-        self.__refresh_btn()
+        self.__create_callback()
+
+    def __create_callback(self):
+        self.__us_selection_callback = \
+            OpenMaya.MEventMessage.addEventCallback("SelectionChanged", self.on_selection_changed)
+
+    def closeEvent(self, arg__1: QtGui.QCloseEvent) -> None:
+        OpenMaya.MMessage.removeCallback(self.__us_selection_callback)
 
     # Reinitialize the ui in order to repopulate it
     def __reinit_ui(self):
@@ -60,14 +73,6 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__auto_assign_radio = None
         self.__assign_to_selection_radio = None
         self.__no_assign_radio = None
-
-    # Refresh the state of buttons
-    def __refresh_btn(self):
-        self.__ui_cs_submit_btn.setEnabled(len(self.__cs_shaders) > 0)
-        self.__ui_us_submit_btn.setEnabled(False)  # TODO
-        self.__assign_to_selection_radio.setEnabled(len(self.__cs_shaders) <= 1)
-        if self.__assign_cs == Assignation.AssignToSelection:
-            self.__auto_assign_radio.setChecked(True)
 
     def __browse_cs_folder(self):
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(
@@ -103,6 +108,7 @@ class ShaderMaker(QtWidgets.QDialog):
         cs_lyt = QtWidgets.QVBoxLayout()
         cs_lyt.setAlignment(QtCore.Qt.AlignTop)
         main_lyt.addLayout(cs_lyt)
+
         # Separator ML.1 | ML.2
         separator = QtWidgets.QFrame()
         separator.setMinimumWidth(1)
@@ -111,6 +117,7 @@ class ShaderMaker(QtWidgets.QDialog):
         separator.setFrameShadow(QtWidgets.QFrame.Sunken)
         separator.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
         main_lyt.addWidget(separator)
+
         # Layout ML.2 : Update shaders
         us_lyt = QtWidgets.QVBoxLayout()
         us_lyt.setAlignment(QtCore.Qt.AlignTop)
@@ -127,7 +134,7 @@ class ShaderMaker(QtWidgets.QDialog):
         browse_cs_btn.setIconSize(icon_size)
         browse_cs_btn.setFixedSize(btn_icon_size)
         browse_cs_btn.setIcon(QtGui.QIcon(
-            QtGui.QPixmap("C:/Users/m.jenin/Documents/marius/shader_maker/assets/browse.png")))  # TODO CHANGE
+            QtGui.QPixmap("C:/Users/m.jenin/Documents/marius/shader_maker/assets/browse.png")))  # TODO CHANGE PATH
         browse_cs_btn.clicked.connect(partial(self.__browse_cs_folder))
         folder_cs_lyt.addWidget(browse_cs_btn)
 
@@ -178,24 +185,32 @@ class ShaderMaker(QtWidgets.QDialog):
         browse_us_btn.setIconSize(icon_size)
         browse_us_btn.setFixedSize(btn_icon_size)
         browse_us_btn.setIcon(QtGui.QIcon(
-            QtGui.QPixmap("C:/Users/m.jenin/Documents/marius/shader_maker/assets/browse.png")))  # TODO CHANGE
+            QtGui.QPixmap("C:/Users/m.jenin/Documents/marius/shader_maker/assets/browse.png")))  # TODO CHANGE PATH
         browse_us_btn.clicked.connect(partial(self.__browse_us_folder))
         folder_us_lyt.addWidget(browse_us_btn)
 
         # Layout ML.2.2 : Selection files
-        # TODO
+        self.__ui_tree_us_files = QtWidgets.QTreeWidget()
+        self.__ui_tree_us_files.setHeaderHidden(True)
+        us_lyt.addWidget(self.__ui_tree_us_files)
 
         # Button ML.2.3 : Submit update
         self.__ui_us_submit_btn = QtWidgets.QPushButton("Update shaders")
         self.__ui_us_submit_btn.setFixedSize(size_btn)
         self.__ui_us_submit_btn.setEnabled(False)
-        self.__ui_us_submit_btn.clicked.connect(self.__submit_update_shader())
+        self.__ui_us_submit_btn.clicked.connect(self.__submit_update_shader)
         us_lyt.addWidget(self.__ui_us_submit_btn, 0, QtCore.Qt.AlignHCenter)
 
     def __update_ui(self):
-        self.__refresh_btn()
         self.__ui_cs_folder_path.setText(self.__cs_folder_path)
         self.__ui_us_folder_path.setText(self.__us_folder_path)
+
+        if self.__ui_cs_submit_btn is not None:
+            self.__ui_cs_submit_btn.setEnabled(len(self.__cs_shaders) > 0)
+        if self.__assign_to_selection_radio is not None:
+            self.__assign_to_selection_radio.setEnabled(len(self.__cs_shaders) <= 1)
+        if self.__assign_cs == Assignation.AssignToSelection and len(self.__cs_shaders) > 1:
+            self.__auto_assign_radio.setChecked(True)
 
         nb_shaders = len(self.__cs_shaders)
         if self.__ui_shaders_cs_lyt is not None:
@@ -226,6 +241,37 @@ class ShaderMaker(QtWidgets.QDialog):
                     else:
                         index_col += 1
 
+        if self.__ui_tree_us_files is not None:
+            self.__ui_tree_us_files.clear()
+            update_btn_enabled = False
+            for directory, data in self.__us_data.items():
+                textures = data[0]
+                shaders = data[1]
+                dir_string = directory + "     ["
+                nb_shaders = len(shaders)
+                for i in range(len(shaders)):
+                    dir_string += shaders[i].name()
+                    if i != nb_shaders - 1:
+                        dir_string += ", "
+                dir_string += "]"
+
+                item = QtWidgets.QTreeWidgetItem([dir_string])
+                self.__ui_tree_us_files.addTopLevelItem(item)
+                for texture in textures:
+                    filepath = texture.getAttr("fileTextureName")
+                    filename = os.path.basename(filepath)
+                    child = QtWidgets.QTreeWidgetItem([filename])
+                    child_enabled = os.path.exists(self.__us_folder_path + "/" + filename)
+                    update_btn_enabled |= child_enabled
+                    child.setDisabled(not child_enabled)
+                    item.addChild(child)
+                item.setExpanded(True)
+
+            if self.__ui_us_submit_btn is not None:
+                self.__ui_us_submit_btn.setEnabled(
+                    len(self.__us_data) > 0 and os.path.isdir(self.__us_folder_path) and update_btn_enabled)
+
+
     # Refresh UI and model attribute when folder cs changes
     def __on_folder_cs_changed(self):
         folder_path = self.__ui_cs_folder_path.text()
@@ -237,7 +283,51 @@ class ShaderMaker(QtWidgets.QDialog):
     def __on_folder_us_changed(self):
         folder_path = self.__ui_us_folder_path.text()
         self.__us_folder_path = folder_path
+        self.__generate_us_data()
         self.__update_ui()
+
+    def on_selection_changed(self, *args, **kwargs):
+        self.__generate_us_data()
+        self.__update_ui()
+
+    def __get_us_shading_gorups_and_textures(self):
+        files = []
+        selection = ls(sl=True, transforms=True)
+        distinct_shading_groups = []
+        for s in selection:
+            shape = s.getShape()
+            if shape is not None:
+                shading_groups = shape.listConnections(type="shadingEngine")
+                for shading_group in shading_groups:
+                    if shading_group not in distinct_shading_groups:
+                        distinct_shading_groups.append(shading_group)
+
+        for shading_group in distinct_shading_groups:
+            textures = self.__get_textures_recursive(shading_group)
+            for texture in textures:
+                files.append({texture, shading_group})
+        return files
+
+    def __get_textures_recursive(self, node):
+        textures = []
+        connections = node.listConnections(source=True, destination=False)
+        for connection in connections:
+            if connection.type() == 'file':
+                textures.append(connection)
+            else:
+                textures.extend(self.__get_textures_recursive(connection))
+        return textures
+
+    def __generate_us_data(self):
+        self.__us_data.clear()
+        for texture, shading_group in self.__get_us_shading_gorups_and_textures():
+            dirname = os.path.dirname(texture.getAttr("fileTextureName"))
+            if dirname not in self.__us_data:
+                self.__us_data[dirname] = [[], []]
+            self.__us_data[dirname][0].append(texture)
+
+            if shading_group not in self.__us_data[dirname][1]:
+                self.__us_data[dirname][1].append(shading_group)
 
     def __load_cs_shaders(self):
         self.__cs_shaders.clear()
@@ -275,12 +365,9 @@ class ShaderMaker(QtWidgets.QDialog):
                     self.__cs_shaders.append(shader)
 
     def __submit_create_shader(self):
+        no_items_to_assign = False
         if self.__assign_cs == Assignation.AutoAssign:  # AutoAssign
             # Generate new shader
-            shading_nodes = {}
-            for shader in self.__cs_shaders:
-                arnold_node, displacement_shader = shader.generate_shading_nodes()
-                shading_nodes[shader.get_title()] = {arnold_node, displacement_shader}
             # Get all the shading groups to reassign
             to_reassign = {}
             selection = ls(materials=True)
@@ -292,33 +379,69 @@ class ShaderMaker(QtWidgets.QDialog):
                             if shading_group not in to_reassign:
                                 to_reassign[shading_group] = shader.get_title()
                                 break
-            # Reassign the right to each shading group
-            for shading_group, shader_title in to_reassign.items():
-                delete(shading_group.surfaceShader.listConnections()[0])
-                arnold_node, displacement_shader = shading_nodes[shader_title]
-                arnold_node.outColor >> shading_group.surfaceShader
-                displacement_shader.displacement >> shading_group.displacementShader
+            no_items_to_assign = len(to_reassign) == 0
+            if not no_items_to_assign:
+                # Reassign the right to each shading group
+                for shading_group, shader_title in to_reassign.items():
+                    self.__delete_existing_shader(shading_group)
+
+                shading_nodes = {}
+                for shader in self.__cs_shaders:
+                    arnold_node, displacement_shader = shader.generate_shading_nodes()
+                    shading_nodes[shader.get_title()] = {arnold_node, displacement_shader}
+
+                for shading_group, shader_title in to_reassign.items():
+                    arnold_node, displacement_shader = shading_nodes[shader_title]
+                    arnold_node.outColor >> shading_group.surfaceShader
+                    displacement_shader.displacement >> shading_group.displacementShader
 
         elif self.__assign_cs == Assignation.AssignToSelection:  # AssignToSelection
             selection = ls(sl=True, transforms=True)
-            # Create a new shading group
-            shading_group = sets(name="SG", empty=True, renderable=True, noSurfaceShader=True)
-            # Generate new shader and assign to shading group
-            for shader in self.__cs_shaders:
+            no_items_to_assign = len(selection) == 0
+            if not no_items_to_assign:
+                # Create a new shading group
+                shading_group = sets(name="SG", empty=True, renderable=True, noSurfaceShader=True)
+                # Generate new shader and assign to shading group
+                for shader in self.__cs_shaders:
+                    arnold_node, displacement_shader = shader.generate_shading_nodes()
+                    arnold_node.outColor >> shading_group.surfaceShader
+                    displacement_shader.displacement >> shading_group.displacementShader
+                # Assign the object in the shading group
+                for obj in selection:
+                    sets(shading_group, forceElement=obj)
+        if self.__assign_cs == Assignation.NoAssign or no_items_to_assign:  # NoAssignation
+            dtx = 1
+            # Generate new shader and assign each to an object
+            for i in range(len(self.__cs_shaders)):
+                shader = self.__cs_shaders[i]
+                object = sphere()[0]
+                object.translate.set([dtx * i, 0, 0])
+                shading_group = sets(name="SG", empty=True, renderable=True, noSurfaceShader=True)
                 arnold_node, displacement_shader = shader.generate_shading_nodes()
                 arnold_node.outColor >> shading_group.surfaceShader
                 displacement_shader.displacement >> shading_group.displacementShader
-            # Assign the object in the shading group
-            for obj in selection:
-                sets(shading_group, forceElement=obj)
-        else:  # NoAssignation
-            # Generate new shader
-            for shader in self.__cs_shaders:
-                shader.generate_shading_nodes()
+                sets(shading_group, forceElement=object)
+
+    def __delete_existing_shader(self, node):
+        for s in node.inputs():
+            if s.type() != "transform":
+                self.__delete_existing_shader(s)
+                try:
+                    if "default" not in s.name():
+                        delete(s)
+                except:
+                    pass
+
 
     def __submit_update_shader(self):
-        # TODO
-        pass
+        for directory, data in self.__us_data.items():
+            textures = data[0]
+            for texture in textures:
+                filepath = texture.getAttr("fileTextureName")
+                filename = os.path.basename(filepath)
+                child_enabled = os.path.exists(self.__us_folder_path + "/" + filename)
+                if child_enabled:
+                    texture.fileTextureName.set(self.__us_folder_path + "/" + filename)
 
     def __assign(self, assign_type, enabled):
         if enabled:
