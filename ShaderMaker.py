@@ -21,6 +21,8 @@ import maya.OpenMaya as OpenMaya
 DEFAULT_DIR_BROWSE = "I:/"
 
 DEFAULT_RELOAD_PACKAGES = []
+
+
 def unload_packages(silent=True, packages=None):
     if packages is None:
         packages = DEFAULT_RELOAD_PACKAGES
@@ -41,6 +43,7 @@ def unload_packages(silent=True, packages=None):
                     print("Unloaded: %s" % i)
         except:
             pass
+
 
 class Assignation(Enum):
     NoAssign = 1
@@ -79,7 +82,6 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__refresh_ui()
         self.__create_callback()
 
-
     # Create a callback for when new Maya selection
     def __create_callback(self):
         self.__us_selection_callback = \
@@ -102,7 +104,6 @@ class ShaderMaker(QtWidgets.QDialog):
 
     # Function to browse a new foler for the creation part
     def __browse_cs_folder(self):
-
         scene_name = sceneName()
         if len(scene_name) > 0:
             dirname = os.path.dirname(os.path.dirname(scene_name))
@@ -504,4 +505,3 @@ class ShaderMaker(QtWidgets.QDialog):
     def __assign(self, assign_type, enabled):
         if enabled:
             self.__assign_cs = assign_type
-
