@@ -4,7 +4,13 @@ Shader Maker is a tool to automatically create shaders on Maya from Substance te
 
 ## How to install
 
-TODO
+You must specify the correct path of the installation folder in the template_main.py file :
+```python
+if __name__ == '__main__':
+    # TODO specify the right path
+    install_dir = 'PATH/TO/shader_maker'
+    # [...]
+```
  
 ## Features
 ### Creation of shader
