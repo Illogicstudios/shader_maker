@@ -1,7 +1,7 @@
 import sys
 
 if __name__ == '__main__':
-    # TODO
+    # TODO specify the right path
     install_dir = 'PATH/TO/shader_maker'
     if not sys.path.__contains__(install_dir):
         sys.path.append(install_dir)
