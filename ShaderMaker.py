@@ -2,6 +2,8 @@ import os
 import re
 from functools import partial
 
+import sys
+
 from pymel.core import *
 import maya.OpenMayaUI as omui
 
@@ -16,6 +18,29 @@ import utils
 
 import maya.OpenMaya as OpenMaya
 
+DEFAULT_DIR_BROWSE = "I:/"
+
+DEFAULT_RELOAD_PACKAGES = []
+def unload_packages(silent=True, packages=None):
+    if packages is None:
+        packages = DEFAULT_RELOAD_PACKAGES
+
+    # construct reload list
+    reload_list = []
+    for i in sys.modules.keys():
+        for package in packages:
+            if i.startswith(package):
+                reload_list.append(i)
+
+    # unload everything
+    for i in reload_list:
+        try:
+            if sys.modules[i] is not None:
+                del (sys.modules[i])
+                if not silent:
+                    print("Unloaded: %s" % i)
+        except:
+            pass
 
 class Assignation(Enum):
     NoAssign = 1
@@ -26,7 +51,6 @@ class Assignation(Enum):
 # CS mean create shaders part
 # US mean update shaders part
 class ShaderMaker(QtWidgets.QDialog):
-
     def __init__(self, parent=wrapInstance(int(omui.MQtUtil.mainWindow()), QtWidgets.QWidget)):
         super(ShaderMaker, self).__init__(parent)
 
@@ -55,6 +79,7 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__refresh_ui()
         self.__create_callback()
 
+
     # Create a callback for when new Maya selection
     def __create_callback(self):
         self.__us_selection_callback = \
@@ -77,15 +102,30 @@ class ShaderMaker(QtWidgets.QDialog):
 
     # Function to browse a new foler for the creation part
     def __browse_cs_folder(self):
+
+        scene_name = sceneName()
+        if len(scene_name) > 0:
+            dirname = os.path.dirname(os.path.dirname(scene_name))
+        else:
+            dirname = DEFAULT_DIR_BROWSE
+
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(
-            self, "Select Directory", "I:/battlestar_2206/assets\ch_panda/textures/02/panda_02_textures") #TODO CHANGE PATH
+            self, "Select Directory",
+            dirname)
         if len(folder_path) > 0 and folder_path != self.__cs_folder_path:
             self.__ui_cs_folder_path.setText(folder_path)
 
     # Function to browse a new foler for the update part
     def __browse_us_folder(self):
+        scene_name = sceneName()
+        if len(scene_name) > 0:
+            dirname = os.path.dirname(os.path.dirname(scene_name))
+        else:
+            dirname = DEFAULT_DIR_BROWSE
+
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(
-            self, "Select Directory", "I:/battlestar_2206/assets\ch_panda/textures/02/panda_02_textures") #TODO CHANGE PATH
+            self, "Select Directory",
+            dirname)
         if len(folder_path) > 0 and folder_path != self.__us_folder_path:
             self.__ui_us_folder_path.setText(folder_path)
 
@@ -95,6 +135,8 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__reinit_ui()
         self.setFixedSize(720, 800)
         self.move(QtWidgets.QDesktopWidget().availableGeometry().center() - self.frameGeometry().center())
+
+        browse_icon_path = os.path.dirname(__file__) + "/assets/browse.png"
 
         # Some aesthetic value
         size_btn = QtCore.QSize(180, 30)
@@ -137,7 +179,7 @@ class ShaderMaker(QtWidgets.QDialog):
         browse_cs_btn.setIconSize(icon_size)
         browse_cs_btn.setFixedSize(btn_icon_size)
         browse_cs_btn.setIcon(QtGui.QIcon(
-            QtGui.QPixmap("C:/Users/m.jenin/Documents/marius/shader_maker/assets/browse.png")))  # TODO CHANGE PATH
+            QtGui.QPixmap(browse_icon_path)))
         browse_cs_btn.clicked.connect(partial(self.__browse_cs_folder))
         folder_cs_lyt.addWidget(browse_cs_btn)
 
@@ -188,7 +230,7 @@ class ShaderMaker(QtWidgets.QDialog):
         browse_us_btn.setIconSize(icon_size)
         browse_us_btn.setFixedSize(btn_icon_size)
         browse_us_btn.setIcon(QtGui.QIcon(
-            QtGui.QPixmap("C:/Users/m.jenin/Documents/marius/shader_maker/assets/browse.png")))  # TODO CHANGE PATH
+            QtGui.QPixmap(browse_icon_path)))
         browse_us_btn.clicked.connect(partial(self.__browse_us_folder))
         folder_us_lyt.addWidget(browse_us_btn)
 
@@ -279,7 +321,6 @@ class ShaderMaker(QtWidgets.QDialog):
             if self.__ui_us_submit_btn is not None:
                 self.__ui_us_submit_btn.setEnabled(
                     len(self.__us_data) > 0 and os.path.isdir(self.__us_folder_path) and update_btn_enabled)
-
 
     # Refresh UI and model attribute when the fodler of the creation part changes
     def __on_folder_cs_changed(self):
@@ -463,3 +504,4 @@ class ShaderMaker(QtWidgets.QDialog):
     def __assign(self, assign_type, enabled):
         if enabled:
             self.__assign_cs = assign_type
+
