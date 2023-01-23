@@ -43,7 +43,6 @@ def unload_packages(silent=True, packages=None):
 
     # unload everything
     for i in reload_list:
-        # noinspection PyBroadException
         try:
             if sys.modules[i] is not None:
                 del (sys.modules[i])
@@ -188,7 +187,6 @@ class ShaderMaker(QtWidgets.QDialog):
         main_lyt.addLayout(us_lyt, 1)
 
         # Layout ML.1.1 : Folder
-        # noinspection DuplicatedCode
         folder_cs_lyt = QtWidgets.QHBoxLayout()
         cs_lyt.addLayout(folder_cs_lyt)
         self.__ui_cs_folder_path = QtWidgets.QLineEdit()
@@ -240,7 +238,6 @@ class ShaderMaker(QtWidgets.QDialog):
         submit_creation_lyt.addWidget(self.__ui_cs_submit_btn)
 
         # Layout ML.2.1 : Folder
-        # noinspection DuplicatedCode
         folder_us_lyt = QtWidgets.QHBoxLayout()
         us_lyt.addLayout(folder_us_lyt)
         self.__ui_us_folder_path = QtWidgets.QLineEdit()
@@ -370,7 +367,6 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__refresh_ui()
 
     # Function called by the callback of the Maya selection
-    # noinspection PyUnusedLocal
     def on_selection_changed(self, *args, **kwargs):
         self.__generate_us_data()
         self.__refresh_us_body()
@@ -463,7 +459,6 @@ class ShaderMaker(QtWidgets.QDialog):
     def __submit_create_shader(self):
         no_items_to_assign = False
         if self.__assign_cs == Assignation.AutoAssign:  # AutoAssign
-            # Generate new shader
             # Get all the shading groups to reassign
             to_reassign = {}
             selection = ls(materials=True)
@@ -528,7 +523,6 @@ class ShaderMaker(QtWidgets.QDialog):
         for s in node.inputs():
             if s.type() != "transform":
                 self.__delete_existing_shader(s)
-                # noinspection PyBroadException
                 try:
                     if "default" not in s.name():
                         delete(s)

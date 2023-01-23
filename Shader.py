@@ -86,7 +86,11 @@ class Shader:
         # If only one shader keep the current one
         elif nb_file_field_match == 1:
             self.__dir_path = os.path.dirname(folder_path)
-            for keyword, file_names in list(field_file_match.values())[0].items():
+            prefix = list(field_file_match.keys())[0]
+            prefix = prefix[:-1] if prefix[-1] == "_" else prefix
+            self.__title = prefix if self.__title[0].isdigit() else self.__title
+            shader_val = list(field_file_match.values())[0]
+            for keyword, file_names in shader_val.items():
                 self.__shader_fields[keyword].set_file_name(folder_path + "/" + file_names[0])
         return shaders
 
