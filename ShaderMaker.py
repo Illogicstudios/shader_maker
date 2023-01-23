@@ -13,20 +13,21 @@ from PySide2 import QtWidgets
 
 from shiboken2 import wrapInstance
 
-from Shader import Shader
 import utils
 
 import maya.OpenMaya as OpenMaya
 
-########################################################################################################
+########################################################################################################################
+
 DEFAULT_DIR_BROWSE = "I:/"
 
+FILE_EXTENSION_SUPPORTED = ["exr", "jpg", "jpeg", "tif", "png"]
 
-FILE_EXTENSION_SUPPORTED = ["exr", "jpg", "tif", "png"]
-
-########################################################################################################
+########################################################################################################################
 
 FILE_EXTENSION_SUPPORTED_REGEX = "|".join(FILE_EXTENSION_SUPPORTED)
+
+from Shader import Shader
 
 def unload_packages(silent=True, packages=None):
     if packages is None:
@@ -119,7 +120,7 @@ class ShaderMaker(QtWidgets.QDialog):
             dirname = os.path.dirname(os.path.dirname(scene_name))
         else:
             dirname = DEFAULT_DIR_BROWSE
-        dirname = "I:/battlestar_2206/assets\ch_panda/textures/02/panda_02_textures"  # TODO remove
+        dirname = "C:/Users/m.jenin/Documents/marius/textures"  # TODO remove
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select Directory",
             dirname)
@@ -420,14 +421,16 @@ class ShaderMaker(QtWidgets.QDialog):
             if os.path.isdir(self.__cs_folder_path + "/" + child):
                 list_dir.append(child)
             else:
-                if re.match(r".*\.("+FILE_EXTENSION_SUPPORTED_REGEX+")", child):
+                if re.match(r".*\.(" + FILE_EXTENSION_SUPPORTED_REGEX + ")", child):
                     has_texture = True
 
-        if len(list_dir) == 0:
+        if has_texture:
             # If the folder is a shader folder
-            if has_texture:
-                shader = Shader(os.path.basename(self.__cs_folder_path))
-                shader.load(self.__cs_folder_path)
+            shader = Shader(os.path.basename(self.__cs_folder_path))
+            sub_shaders = shader.load(self.__cs_folder_path)
+            if len(sub_shaders) > 0 :
+                self.__cs_shaders.extend(sub_shaders)
+            else:
                 self.__cs_shaders.append(shader)
         else:
             # If the folder is a folder of shader folder
@@ -436,13 +439,16 @@ class ShaderMaker(QtWidgets.QDialog):
                 has_texture_2 = False
                 child_dir_2 = os.listdir(dir_path)
                 for child in child_dir_2:
-                    if re.match(r".*\.("+FILE_EXTENSION_SUPPORTED_REGEX+")", child):
+                    if re.match(r".*\.(" + FILE_EXTENSION_SUPPORTED_REGEX + ")", child):
                         has_texture_2 = True
                         break
                 if has_texture_2:
                     shader = Shader(dir)
-                    shader.load(dir_path)
-                    self.__cs_shaders.append(shader)
+                    sub_shaders = shader.load(dir_path)
+                    if len(sub_shaders) > 0:
+                        self.__cs_shaders.extend(sub_shaders)
+                    else:
+                        self.__cs_shaders.append(shader)
 
     # Create the shader according to the method of assignation
     def __submit_create_shader(self):

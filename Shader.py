@@ -1,22 +1,25 @@
-import os
 from os.path import isfile, join
-import re
-
-from functools import partial
-
-from pymel.core import *
-
-from PySide2 import QtCore
-from PySide2 import QtWidgets
 
 import ShaderMaker
 from ShaderMaker import *
 
+########################################################################################################################
+
+SHADER_RULES = {
+    "BaseColor": r"(.*)(?:basecolor|albedo|diffuse).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
+    "Normal": r"((?:(?!combine).)*)(?:normal)(?:(?!combine).)*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
+    "Displacement": r"(.*)(?:height|displacement|disp).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
+    "Roughness": r"(.*)(?:roughness).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
+    "Metalness": r"(.*)(?:metalness).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
+}
+
+
+########################################################################################################################
 
 # A Texture field in the shader
 class ShaderField:
     def __init__(self, rule):
-        self.__regexp = re.compile(rule)
+        self.__regexp = rule
         self.__file_name = ""
 
     def get_file_name(self):
@@ -33,15 +36,12 @@ class ShaderField:
 
 
 class Shader:
-    def __init__(self, title):
-        self.__shader_fields = {
-            "BaseColor": ShaderField(r".*(BaseColor).*\.("+ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX+")"),
-            "Normal": ShaderField(r"((?!Combine).)*(Normal)((?!Combine).)*\.("+ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX+")"),
-            "Displacement": ShaderField(r".*(Height).*\.("+ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX+")"),
-            "Roughness": ShaderField(r".*(Roughness).*\.("+ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX+")"),
-            "Metalness": ShaderField(r".*(Metalness).*\.("+ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX+")"),
-        }
+    def __init__(self, title, prefix = ""):
+        self.__shader_fields = {}
+        for keyword, regex in SHADER_RULES.items():
+            self.__shader_fields[keyword] = ShaderField(regex)
         self.__title = title
+        self.__prefix_name = prefix
         self.__dir_path = ""
         self.__ui_field_path = None
         self.__image_label = None
@@ -53,19 +53,41 @@ class Shader:
 
     # Load the field according to the folder
     def load(self, folder_path):
-        self.__dir_path = os.path.dirname(folder_path)
+        parent_folder_path = os.path.dirname(folder_path)
         files_name_list = [f for f in os.listdir(folder_path) if
-                           isfile(join(folder_path, f)) and re.match(r".*\.("+ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX+")", f)]
-
+                           isfile(join(folder_path, f)) and re.match(
+                               r".*\.(" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")", f.lower())]
+        files_name_list.sort(key=str)
+        files_name_list.reverse()
+        field_file_match = {}
         for keyword, field in self.__shader_fields.items():
             regexp = re.compile(field.get_regexp())
             for file_name in files_name_list:
-                if re.match(regexp, file_name):
-                    field.set_file_name(folder_path + "/" + file_name)
-                    break
+                match = re.match(regexp, file_name.lower())
+                if match:
+                    prefix = match.groups()[0]
+                    if prefix not in field_file_match: field_file_match[prefix] = {keyword:[]}
+                    elif keyword not in field_file_match[prefix]: field_file_match[prefix][keyword] = []
+                    field_file_match[prefix][keyword].append(file_name)
+
+        nb_file_field_match = len(field_file_match)
+        shaders = []
+        if nb_file_field_match > 1:
+            for prefix, field_datas in field_file_match.items():
+                prefix_to_title = prefix[:-1] if prefix[-1] == "_" else prefix
+                shader = Shader(prefix_to_title,prefix)
+                shader.__dir_path = parent_folder_path
+                for keyword, file_names in field_datas.items():
+                    shader.__shader_fields[keyword].set_file_name(folder_path+"/"+file_names[0])
+                shaders.append(shader)
+        elif nb_file_field_match == 1:
+            self.__dir_path = parent_folder_path
+            for keyword, file_names in list(field_file_match.values())[0].items():
+                self.__shader_fields[keyword].set_file_name(folder_path+"/"+file_names[0])
+        return shaders
 
     # Populate the ui with the data of the shader
-    def populate(self, shader_maker, layout, index_row, index_col, max_size):
+    def populate(self, shader_maker, lyt, index_row, index_col, max_size):
         shader_card = QtWidgets.QVBoxLayout()
         shader_card.setMargin(5)
         frame_shader_card = QtWidgets.QFrame()
@@ -76,13 +98,13 @@ class Shader:
         top_layout = QtWidgets.QHBoxLayout()
         enabled_checkbox = QtWidgets.QCheckBox()
         enabled_checkbox.setChecked(True)
-        enabled_checkbox.stateChanged.connect(partial(self.__enabled_changed,shader_maker))
-        top_layout.addWidget(enabled_checkbox,0,QtCore.Qt.AlignLeft)
+        enabled_checkbox.stateChanged.connect(partial(self.__enabled_changed, shader_maker))
+        top_layout.addWidget(enabled_checkbox, 0, QtCore.Qt.AlignLeft)
 
         shader_title = QtWidgets.QLabel(self.__title)
         shader_title.setMaximumWidth(max_size - 10)
         shader_title.setMargin(5)
-        top_layout.addWidget(shader_title,1,QtCore.Qt.AlignCenter)
+        top_layout.addWidget(shader_title, 1, QtCore.Qt.AlignCenter)
 
         shader_card.addLayout(top_layout)
 
@@ -101,9 +123,9 @@ class Shader:
                 grid_layout.addWidget(path_line, i, 1)
 
         shader_card.addLayout(grid_layout)
-        layout.addWidget(frame_shader_card, index_row, index_col)
+        lyt.addWidget(frame_shader_card, index_row, index_col)
 
-    def __enabled_changed(self,shader_maker,checked):
+    def __enabled_changed(self, shader_maker, checked):
         self.__enabled = checked == QtCore.Qt.Checked
         shader_maker.refresh_btn()
 
@@ -126,7 +148,7 @@ class Shader:
 
         # Roughness
         if self.__shader_fields["Roughness"].is_enabled():
-            roughness_file_name = self.__shader_fields["Normal"].get_file_name()
+            roughness_file_name = self.__shader_fields["Roughness"].get_file_name()
             roughness = shadingNode("file", asTexture=True, name="Roughness")
             roughness.fileTextureName.set(roughness_file_name)
             remap_value = shadingNode("remapValue", asUtility=True, name="remapValue")
@@ -136,7 +158,7 @@ class Shader:
 
         # Metalness
         if self.__shader_fields["Metalness"].is_enabled():
-            metalness_file_name = self.__shader_fields["Displacement"].get_file_name()
+            metalness_file_name = self.__shader_fields["Metalness"].get_file_name()
             metalness = shadingNode("file", asTexture=True, name="Metalness")
             metalness.fileTextureName.set(metalness_file_name)
             place_texture.outUV >> metalness.uvCoord
@@ -144,7 +166,7 @@ class Shader:
 
         # Normal
         if self.__shader_fields["Normal"].is_enabled():
-            normal_file_name = self.__shader_fields["Roughness"].get_file_name()
+            normal_file_name = self.__shader_fields["Normal"].get_file_name()
             normal = shadingNode("file", asTexture=True, name="Normal")
             normal.fileTextureName.set(normal_file_name)
             normal_map = shadingNode("aiNormalMap", asUtility=True, name="aiNormalMap")
@@ -155,7 +177,7 @@ class Shader:
         # Displacement
         displacement_node = None
         if self.__shader_fields["Displacement"].is_enabled():
-            height_file_name = self.__shader_fields["Metalness"].get_file_name()
+            height_file_name = self.__shader_fields["Displacement"].get_file_name()
             height = shadingNode("file", asTexture=True, name="Displacement")
             height.fileTextureName.set(height_file_name)
             displacement_node = shadingNode("displacementShader", asUtility=True, name="displacementShader")
