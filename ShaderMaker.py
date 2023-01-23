@@ -18,14 +18,19 @@ import utils
 
 import maya.OpenMaya as OpenMaya
 
+########################################################################################################
 DEFAULT_DIR_BROWSE = "I:/"
 
-DEFAULT_RELOAD_PACKAGES = []
 
+FILE_EXTENSION_SUPPORTED = ["exr", "jpg", "tif", "png"]
+
+########################################################################################################
+
+FILE_EXTENSION_SUPPORTED_REGEX = "|".join(FILE_EXTENSION_SUPPORTED)
 
 def unload_packages(silent=True, packages=None):
     if packages is None:
-        packages = DEFAULT_RELOAD_PACKAGES
+        packages = []
 
     # construct reload list
     reload_list = []
@@ -93,6 +98,11 @@ class ShaderMaker(QtWidgets.QDialog):
 
     # initialize the ui
     def __reinit_ui(self):
+        self.__ui_width = 900
+        self.__ui_height = 800
+        self.__ui_min_width = 700
+        self.__ui_min_height = 400
+        self.__ui_cs_nb_col = 1
         self.__ui_cs_folder_path = None
         self.__ui_us_folder_path = None
         self.__ui_cs_submit_btn = None
@@ -109,7 +119,7 @@ class ShaderMaker(QtWidgets.QDialog):
             dirname = os.path.dirname(os.path.dirname(scene_name))
         else:
             dirname = DEFAULT_DIR_BROWSE
-
+        dirname = "I:/battlestar_2206/assets\ch_panda/textures/02/panda_02_textures"  # TODO remove
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select Directory",
             dirname)
@@ -134,7 +144,8 @@ class ShaderMaker(QtWidgets.QDialog):
     def __create_ui(self):
         # Reinit attributes of the UI
         self.__reinit_ui()
-        self.setFixedSize(720, 800)
+        self.setMinimumSize(self.__ui_min_width, self.__ui_min_height)
+        self.resize(self.__ui_width, self.__ui_height)
         self.move(QtWidgets.QDesktopWidget().availableGeometry().center() - self.frameGeometry().center())
 
         browse_icon_path = os.path.dirname(__file__) + "/assets/browse.png"
@@ -145,21 +156,21 @@ class ShaderMaker(QtWidgets.QDialog):
         btn_icon_size = QtCore.QSize(24, 24)
 
         # Main Layout
-        main_lyt = QtWidgets.QVBoxLayout()
+        main_lyt = QtWidgets.QHBoxLayout()
         main_lyt.setContentsMargins(10, 15, 10, 15)
-        main_lyt.setSpacing(20)
+        main_lyt.setSpacing(12)
         self.setLayout(main_lyt)
 
         # Layout ML.1 : Create shaders
         cs_lyt = QtWidgets.QVBoxLayout()
         cs_lyt.setAlignment(QtCore.Qt.AlignTop)
-        main_lyt.addLayout(cs_lyt)
+        main_lyt.addLayout(cs_lyt, 1)
 
         # Separator ML.1 | ML.2
         separator = QtWidgets.QFrame()
         separator.setMinimumWidth(1)
-        separator.setFixedHeight(20)
-        separator.setFrameShape(QtWidgets.QFrame.HLine)
+        separator.setFixedWidth(2)
+        separator.setFrameShape(QtWidgets.QFrame.VLine)
         separator.setFrameShadow(QtWidgets.QFrame.Sunken)
         separator.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
         main_lyt.addWidget(separator)
@@ -167,7 +178,7 @@ class ShaderMaker(QtWidgets.QDialog):
         # Layout ML.2 : Update shaders
         us_lyt = QtWidgets.QVBoxLayout()
         us_lyt.setAlignment(QtCore.Qt.AlignTop)
-        main_lyt.addLayout(us_lyt)
+        main_lyt.addLayout(us_lyt, 1)
 
         # Layout ML.1.1 : Folder
         folder_cs_lyt = QtWidgets.QHBoxLayout()
@@ -193,7 +204,7 @@ class ShaderMaker(QtWidgets.QDialog):
         submit_creation_lyt.setAlignment(QtCore.Qt.AlignCenter)
         cs_lyt.addLayout(submit_creation_lyt)
 
-        button_group_lyt = QtWidgets.QHBoxLayout()
+        button_group_lyt = QtWidgets.QVBoxLayout()
         button_group_lyt.setAlignment(QtCore.Qt.AlignRight)
         button_group_cs = QtWidgets.QButtonGroup()
         self.__auto_assign_radio = QtWidgets.QRadioButton("Replace by shader name")
@@ -253,14 +264,26 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__ui_cs_folder_path.setText(self.__cs_folder_path)
         self.__ui_us_folder_path.setText(self.__us_folder_path)
 
+        self.refresh_btn()
+
+        self.__refresh_cs_body()
+
+        self.__refresh_us_body()
+
+    def refresh_btn(self):
+        nb_shader_enabled = 0
+        for shader in self.__cs_shaders:
+            if shader.is_enabled():
+                nb_shader_enabled += 1
         # Refresh the buttons
         if self.__ui_cs_submit_btn is not None:
-            self.__ui_cs_submit_btn.setEnabled(len(self.__cs_shaders) > 0)
+            self.__ui_cs_submit_btn.setEnabled(nb_shader_enabled > 0)
         if self.__assign_to_selection_radio is not None:
-            self.__assign_to_selection_radio.setEnabled(len(self.__cs_shaders) <= 1)
-        if self.__assign_cs == Assignation.AssignToSelection and len(self.__cs_shaders) > 1:
+            self.__assign_to_selection_radio.setEnabled(nb_shader_enabled <= 1)
+        if self.__assign_cs == Assignation.AssignToSelection and nb_shader_enabled > 1:
             self.__auto_assign_radio.setChecked(True)
 
+    def __refresh_cs_body(self):
         # Refresh the body of the creation part
         nb_shaders = len(self.__cs_shaders)
         if self.__ui_shaders_cs_lyt is not None:
@@ -268,29 +291,29 @@ class ShaderMaker(QtWidgets.QDialog):
             grid_shaders = QtWidgets.QGridLayout()
             scroll_area = QtWidgets.QScrollArea()
             scroll_area.setWidgetResizable(True)
-            scroll_area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
             grid_shaders.setAlignment(QtCore.Qt.AlignTop)
             scroll_area_widget = QtWidgets.QWidget()
             scroll_area.setWidget(scroll_area_widget)
             scroll_area_widget.setLayout(grid_shaders)
             self.__ui_shaders_cs_lyt.addWidget(scroll_area)
+            width = self.width()
             if nb_shaders > 0:
                 index_row = 0
                 index_col = 0
-                nb_col = 3
-                if nb_shaders < nb_col:
-                    max_size_elem = (680 - (nb_shaders - 1) * 15) / nb_shaders
+                if nb_shaders < self.__ui_cs_nb_col:
+                    max_size_elem = (width - 40 - (nb_shaders - 1) * 15) / nb_shaders
                 else:
-                    max_size_elem = (680 - (nb_col - 1) * 15) / nb_col
+                    max_size_elem = (width - 40 - (self.__ui_cs_nb_col - 1) * 15) / self.__ui_cs_nb_col
 
                 for shader in self.__cs_shaders:
-                    shader.populate(grid_shaders, index_row, index_col, max_size_elem)
-                    if index_col == nb_col - 1:
+                    shader.populate(self, grid_shaders, index_row, index_col, max_size_elem)
+                    if index_col == self.__ui_cs_nb_col - 1:
                         index_col = 0
                         index_row += 1
                     else:
                         index_col += 1
 
+    def __refresh_us_body(self):
         # Refresh the body of the update part
         if self.__ui_tree_us_files is not None:
             self.__ui_tree_us_files.clear()
@@ -327,7 +350,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __on_folder_cs_changed(self):
         folder_path = self.__ui_cs_folder_path.text()
         self.__cs_folder_path = folder_path
-        self.__load_cs_shaders()
+        self.__generate_cs_shaders()
         self.__refresh_ui()
 
     # Refresh UI and model attribute when the fodler of the update part changes
@@ -340,7 +363,7 @@ class ShaderMaker(QtWidgets.QDialog):
     # Function called by the callback of the Maya selection
     def on_selection_changed(self, *args, **kwargs):
         self.__generate_us_data()
-        self.__refresh_ui()
+        self.__refresh_us_body()
 
     # Get the textures and the shading groups of the selection
     def __get_us_shading_groups_and_textures(self):
@@ -385,23 +408,24 @@ class ShaderMaker(QtWidgets.QDialog):
                 self.__us_data[dirname][1].append(shading_group)
 
     # Generate the model data for the creatino part
-    def __load_cs_shaders(self):
+    def __generate_cs_shaders(self):
         self.__cs_shaders.clear()
         if not os.path.isdir(self.__cs_folder_path):
             return
         child_dir = os.listdir(self.__cs_folder_path)
         list_dir = []
-        has_exr = False
+        has_texture = False
+
         for child in child_dir:
             if os.path.isdir(self.__cs_folder_path + "/" + child):
                 list_dir.append(child)
             else:
-                if re.match(r".*\.exr", child):
-                    has_exr = True
+                if re.match(r".*\.("+FILE_EXTENSION_SUPPORTED_REGEX+")", child):
+                    has_texture = True
 
         if len(list_dir) == 0:
             # If the folder is a shader folder
-            if has_exr:
+            if has_texture:
                 shader = Shader(os.path.basename(self.__cs_folder_path))
                 shader.load(self.__cs_folder_path)
                 self.__cs_shaders.append(shader)
@@ -409,13 +433,13 @@ class ShaderMaker(QtWidgets.QDialog):
             # If the folder is a folder of shader folder
             for dir in list_dir:
                 dir_path = self.__cs_folder_path + "/" + dir
-                has_exr_2 = False
+                has_texture_2 = False
                 child_dir_2 = os.listdir(dir_path)
                 for child in child_dir_2:
-                    if re.match(r".*\.exr", child):
-                        has_exr_2 = True
+                    if re.match(r".*\.("+FILE_EXTENSION_SUPPORTED_REGEX+")", child):
+                        has_texture_2 = True
                         break
-                if has_exr_2:
+                if has_texture_2:
                     shader = Shader(dir)
                     shader.load(dir_path)
                     self.__cs_shaders.append(shader)
@@ -430,7 +454,7 @@ class ShaderMaker(QtWidgets.QDialog):
             selection = ls(materials=True)
             for s in selection:
                 for shader in self.__cs_shaders:
-                    if shader.get_title() == s.name():
+                    if shader.is_enabled() and shader.get_title() == s.name():
                         shading_groups = s.listConnections(type="shadingEngine")
                         for shading_group in shading_groups:
                             if shading_group not in to_reassign:
@@ -444,13 +468,14 @@ class ShaderMaker(QtWidgets.QDialog):
 
                 shading_nodes = {}
                 for shader in self.__cs_shaders:
-                    arnold_node, displacement_shader = shader.generate_shading_nodes()
-                    shading_nodes[shader.get_title()] = {arnold_node, displacement_shader}
+                    if shader.is_enabled():
+                        arnold_node, displacement_node = shader.generate_shading_nodes()
+                        shading_nodes[shader.get_title()] = {arnold_node, displacement_node}
 
                 for shading_group, shader_title in to_reassign.items():
-                    arnold_node, displacement_shader = shading_nodes[shader_title]
+                    arnold_node, displacement_node = shading_nodes[shader_title]
                     arnold_node.outColor >> shading_group.surfaceShader
-                    displacement_shader.displacement >> shading_group.displacementShader
+                    displacement_node.displacement >> shading_group.displacementShader
 
         elif self.__assign_cs == Assignation.AssignToSelection:  # AssignToSelection
             selection = ls(sl=True, transforms=True)
@@ -460,24 +485,27 @@ class ShaderMaker(QtWidgets.QDialog):
                 shading_group = sets(name="SG", empty=True, renderable=True, noSurfaceShader=True)
                 # Generate new shader and assign to shading group
                 for shader in self.__cs_shaders:
-                    arnold_node, displacement_shader = shader.generate_shading_nodes()
-                    arnold_node.outColor >> shading_group.surfaceShader
-                    displacement_shader.displacement >> shading_group.displacementShader
+                    if shader.is_enabled():
+                        arnold_node, displacement_node = shader.generate_shading_nodes()
+                        arnold_node.outColor >> shading_group.surfaceShader
+                        displacement_node.displacement >> shading_group.displacementShader
                 # Assign the object in the shading group
                 for obj in selection:
                     sets(shading_group, forceElement=obj)
         if self.__assign_cs == Assignation.NoAssign or no_items_to_assign:  # NoAssignation
             dtx = 1
+            i = 0
             # Generate new shader and assign each to an object
-            for i in range(len(self.__cs_shaders)):
-                shader = self.__cs_shaders[i]
-                object = sphere()[0]
-                object.translate.set([dtx * i, 0, 0])
-                shading_group = sets(name="SG", empty=True, renderable=True, noSurfaceShader=True)
-                arnold_node, displacement_shader = shader.generate_shading_nodes()
-                arnold_node.outColor >> shading_group.surfaceShader
-                displacement_shader.displacement >> shading_group.displacementShader
-                sets(shading_group, forceElement=object)
+            for shader in self.__cs_shaders:
+                if shader.is_enabled():
+                    object = sphere()[0]
+                    object.translate.set([dtx * i, 0, 0])
+                    shading_group = sets(name="SG", empty=True, renderable=True, noSurfaceShader=True)
+                    arnold_node, displacement_node = shader.generate_shading_nodes()
+                    arnold_node.outColor >> shading_group.surfaceShader
+                    displacement_node.displacement >> shading_group.displacementShader
+                    sets(shading_group, forceElement=object)
+                    i += 1
 
     # Delete an existing shader recursively
     def __delete_existing_shader(self, node):
