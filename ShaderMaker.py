@@ -29,6 +29,7 @@ FILE_EXTENSION_SUPPORTED_REGEX = "|".join(FILE_EXTENSION_SUPPORTED)
 
 from Shader import Shader
 
+
 def unload_packages(silent=True, packages=None):
     if packages is None:
         packages = []
@@ -42,6 +43,7 @@ def unload_packages(silent=True, packages=None):
 
     # unload everything
     for i in reload_list:
+        # noinspection PyBroadException
         try:
             if sys.modules[i] is not None:
                 del (sys.modules[i])
@@ -60,8 +62,18 @@ class Assignation(Enum):
 # CS mean create shaders part
 # US mean update shaders part
 class ShaderMaker(QtWidgets.QDialog):
-    def __init__(self, parent=wrapInstance(int(omui.MQtUtil.mainWindow()), QtWidgets.QWidget)):
-        super(ShaderMaker, self).__init__(parent)
+
+    @staticmethod
+    def __get_dir_name():
+        scene_name = sceneName()
+        if len(scene_name) > 0:
+            dirname = os.path.dirname(os.path.dirname(scene_name))
+        else:
+            dirname = DEFAULT_DIR_BROWSE
+        return dirname
+
+    def __init__(self, prnt=wrapInstance(int(omui.MQtUtil.mainWindow()), QtWidgets.QWidget)):
+        super(ShaderMaker, self).__init__(prnt)
 
         # Model attributes
         self.__cs_folder_path = ""
@@ -113,14 +125,12 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__assign_to_selection_radio = None
         self.__no_assign_radio = None
 
-    # Function to browse a new foler for the creation part
+    # Get the parent directory of the scene or a default one
+
+    # Function to browse a new folder for the creation part
     def __browse_cs_folder(self):
-        scene_name = sceneName()
-        if len(scene_name) > 0:
-            dirname = os.path.dirname(os.path.dirname(scene_name))
-        else:
-            dirname = DEFAULT_DIR_BROWSE
-        dirname = "C:/Users/m.jenin/Documents/marius/textures"  # TODO remove
+        dirname = ShaderMaker.__get_dir_name()
+
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select Directory",
             dirname)
@@ -129,11 +139,7 @@ class ShaderMaker(QtWidgets.QDialog):
 
     # Function to browse a new foler for the update part
     def __browse_us_folder(self):
-        scene_name = sceneName()
-        if len(scene_name) > 0:
-            dirname = os.path.dirname(os.path.dirname(scene_name))
-        else:
-            dirname = DEFAULT_DIR_BROWSE
+        dirname = ShaderMaker.__get_dir_name()
 
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select Directory",
@@ -168,13 +174,13 @@ class ShaderMaker(QtWidgets.QDialog):
         main_lyt.addLayout(cs_lyt, 1)
 
         # Separator ML.1 | ML.2
-        separator = QtWidgets.QFrame()
-        separator.setMinimumWidth(1)
-        separator.setFixedWidth(2)
-        separator.setFrameShape(QtWidgets.QFrame.VLine)
-        separator.setFrameShadow(QtWidgets.QFrame.Sunken)
-        separator.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
-        main_lyt.addWidget(separator)
+        sep = QtWidgets.QFrame()
+        sep.setMinimumWidth(1)
+        sep.setFixedWidth(2)
+        sep.setFrameShape(QtWidgets.QFrame.VLine)
+        sep.setFrameShadow(QtWidgets.QFrame.Sunken)
+        sep.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
+        main_lyt.addWidget(sep)
 
         # Layout ML.2 : Update shaders
         us_lyt = QtWidgets.QVBoxLayout()
@@ -182,6 +188,7 @@ class ShaderMaker(QtWidgets.QDialog):
         main_lyt.addLayout(us_lyt, 1)
 
         # Layout ML.1.1 : Folder
+        # noinspection DuplicatedCode
         folder_cs_lyt = QtWidgets.QHBoxLayout()
         cs_lyt.addLayout(folder_cs_lyt)
         self.__ui_cs_folder_path = QtWidgets.QLineEdit()
@@ -233,6 +240,7 @@ class ShaderMaker(QtWidgets.QDialog):
         submit_creation_lyt.addWidget(self.__ui_cs_submit_btn)
 
         # Layout ML.2.1 : Folder
+        # noinspection DuplicatedCode
         folder_us_lyt = QtWidgets.QHBoxLayout()
         us_lyt.addLayout(folder_us_lyt)
         self.__ui_us_folder_path = QtWidgets.QLineEdit()
@@ -362,6 +370,7 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__refresh_ui()
 
     # Function called by the callback of the Maya selection
+    # noinspection PyUnusedLocal
     def on_selection_changed(self, *args, **kwargs):
         self.__generate_us_data()
         self.__refresh_us_body()
@@ -428,14 +437,14 @@ class ShaderMaker(QtWidgets.QDialog):
             # If the folder is a shader folder
             shader = Shader(os.path.basename(self.__cs_folder_path))
             sub_shaders = shader.load(self.__cs_folder_path)
-            if len(sub_shaders) > 0 :
+            if len(sub_shaders) > 0:
                 self.__cs_shaders.extend(sub_shaders)
             else:
                 self.__cs_shaders.append(shader)
         else:
             # If the folder is a folder of shader folder
-            for dir in list_dir:
-                dir_path = self.__cs_folder_path + "/" + dir
+            for directory in list_dir:
+                dir_path = self.__cs_folder_path + "/" + directory
                 has_texture_2 = False
                 child_dir_2 = os.listdir(dir_path)
                 for child in child_dir_2:
@@ -443,7 +452,7 @@ class ShaderMaker(QtWidgets.QDialog):
                         has_texture_2 = True
                         break
                 if has_texture_2:
-                    shader = Shader(dir)
+                    shader = Shader(directory)
                     sub_shaders = shader.load(dir_path)
                     if len(sub_shaders) > 0:
                         self.__cs_shaders.extend(sub_shaders)
@@ -504,13 +513,13 @@ class ShaderMaker(QtWidgets.QDialog):
             # Generate new shader and assign each to an object
             for shader in self.__cs_shaders:
                 if shader.is_enabled():
-                    object = sphere()[0]
-                    object.translate.set([dtx * i, 0, 0])
+                    obj = sphere()[0]
+                    obj.translate.set([dtx * i, 0, 0])
                     shading_group = sets(name="SG", empty=True, renderable=True, noSurfaceShader=True)
                     arnold_node, displacement_node = shader.generate_shading_nodes()
                     arnold_node.outColor >> shading_group.surfaceShader
                     displacement_node.displacement >> shading_group.displacementShader
-                    sets(shading_group, forceElement=object)
+                    sets(shading_group, forceElement=obj)
                     i += 1
 
     # Delete an existing shader recursively
@@ -518,6 +527,7 @@ class ShaderMaker(QtWidgets.QDialog):
         for s in node.inputs():
             if s.type() != "transform":
                 self.__delete_existing_shader(s)
+                # noinspection PyBroadException
                 try:
                     if "default" not in s.name():
                         delete(s)

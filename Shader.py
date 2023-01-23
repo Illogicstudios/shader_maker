@@ -36,12 +36,11 @@ class ShaderField:
 
 
 class Shader:
-    def __init__(self, title, prefix = ""):
+    def __init__(self, title):
         self.__shader_fields = {}
         for keyword, regex in SHADER_RULES.items():
             self.__shader_fields[keyword] = ShaderField(regex)
         self.__title = title
-        self.__prefix_name = prefix
         self.__dir_path = ""
         self.__ui_field_path = None
         self.__image_label = None
@@ -53,37 +52,42 @@ class Shader:
 
     # Load the field according to the folder
     def load(self, folder_path):
-        parent_folder_path = os.path.dirname(folder_path)
+        # Get all the texture files of the folder
         files_name_list = [f for f in os.listdir(folder_path) if
                            isfile(join(folder_path, f)) and re.match(
-                               r".*\.(" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")", f.lower())]
+                               r".*\.(" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")", f, re.IGNORECASE)]
         files_name_list.sort(key=str)
         files_name_list.reverse()
+        # Sort and store objects according to their prefix to detect if many shaders are in the folder
         field_file_match = {}
         for keyword, field in self.__shader_fields.items():
-            regexp = re.compile(field.get_regexp())
+            regexp = field.get_regexp()
             for file_name in files_name_list:
-                match = re.match(regexp, file_name.lower())
+                match = re.match(regexp, file_name.lower(), re.IGNORECASE)
                 if match:
                     prefix = match.groups()[0]
-                    if prefix not in field_file_match: field_file_match[prefix] = {keyword:[]}
-                    elif keyword not in field_file_match[prefix]: field_file_match[prefix][keyword] = []
+                    if prefix not in field_file_match:
+                        field_file_match[prefix] = {keyword: []}
+                    elif keyword not in field_file_match[prefix]:
+                        field_file_match[prefix][keyword] = []
                     field_file_match[prefix][keyword].append(file_name)
 
         nb_file_field_match = len(field_file_match)
+        # If many shaders, create as much shaders
         shaders = []
         if nb_file_field_match > 1:
             for prefix, field_datas in field_file_match.items():
                 prefix_to_title = prefix[:-1] if prefix[-1] == "_" else prefix
-                shader = Shader(prefix_to_title,prefix)
-                shader.__dir_path = parent_folder_path
+                shader = Shader(prefix_to_title)
+                shader.__dir_path = folder_path
                 for keyword, file_names in field_datas.items():
-                    shader.__shader_fields[keyword].set_file_name(folder_path+"/"+file_names[0])
+                    shader.__shader_fields[keyword].set_file_name(folder_path + "/" + file_names[0])
                 shaders.append(shader)
+        # If only one shader keep the current one
         elif nb_file_field_match == 1:
-            self.__dir_path = parent_folder_path
+            self.__dir_path = os.path.dirname(folder_path)
             for keyword, file_names in list(field_file_match.values())[0].items():
-                self.__shader_fields[keyword].set_file_name(folder_path+"/"+file_names[0])
+                self.__shader_fields[keyword].set_file_name(folder_path + "/" + file_names[0])
         return shaders
 
     # Populate the ui with the data of the shader
