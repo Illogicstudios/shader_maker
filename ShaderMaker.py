@@ -518,7 +518,8 @@ class ShaderMaker(QtWidgets.QDialog):
                     shading_group = sets(name="SG", empty=True, renderable=True, noSurfaceShader=True)
                     arnold_node, displacement_node = shader.generate_shading_nodes()
                     arnold_node.outColor >> shading_group.surfaceShader
-                    displacement_node.displacement >> shading_group.displacementShader
+                    if displacement_node is not None:
+                        displacement_node.displacement >> shading_group.displacementShader
                     sets(shading_group, forceElement=obj)
                     i += 1
 
