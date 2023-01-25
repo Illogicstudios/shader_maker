@@ -151,6 +151,7 @@ class Shader:
             base_color_file_name = self.__shader_fields["BaseColor"].get_file_name()
             base_color = shadingNode("file", asTexture=True, name="BaseColor")
             base_color.fileTextureName.set(base_color_file_name)
+            base_color.uvTilingMode.set(3)
             place_texture.outUV >> base_color.uvCoord
             base_color.outColor >> arnold_node.baseColor
 
@@ -159,6 +160,7 @@ class Shader:
             roughness_file_name = self.__shader_fields["Roughness"].get_file_name()
             roughness = shadingNode("file", asTexture=True, name="Roughness")
             roughness.fileTextureName.set(roughness_file_name)
+            roughness.uvTilingMode.set(3)
             remap_value = shadingNode("remapValue", asUtility=True, name="remapValue")
             place_texture.outUV >> roughness.uvCoord
             roughness.outColorR >> remap_value.inputValue
@@ -169,6 +171,7 @@ class Shader:
             metalness_file_name = self.__shader_fields["Metalness"].get_file_name()
             metalness = shadingNode("file", asTexture=True, name="Metalness")
             metalness.fileTextureName.set(metalness_file_name)
+            metalness.uvTilingMode.set(3)
             place_texture.outUV >> metalness.uvCoord
             metalness.outColorR >> arnold_node.metalness
 
@@ -177,6 +180,7 @@ class Shader:
             normal_file_name = self.__shader_fields["Normal"].get_file_name()
             normal = shadingNode("file", asTexture=True, name="Normal")
             normal.fileTextureName.set(normal_file_name)
+            normal.uvTilingMode.set(3)
             normal_map = shadingNode("aiNormalMap", asUtility=True, name="aiNormalMap")
             place_texture.outUV >> normal.uvCoord
             normal.outColor >> normal_map.input
@@ -188,6 +192,7 @@ class Shader:
             height_file_name = self.__shader_fields["Displacement"].get_file_name()
             height = shadingNode("file", asTexture=True, name="Displacement")
             height.fileTextureName.set(height_file_name)
+            height.uvTilingMode.set(3)
             displacement_node = shadingNode("displacementShader", asUtility=True, name="displacementShader")
             place_texture.outUV >> height.uvCoord
             height.outColorR >> displacement_node.displacement
