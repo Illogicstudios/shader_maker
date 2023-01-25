@@ -457,6 +457,7 @@ class ShaderMaker(QtWidgets.QDialog):
 
     # Create the shader according to the method of assignation
     def __submit_create_shader(self):
+        undoInfo(openChunk = True)
         no_items_to_assign = False
         if self.__assign_cs == Assignation.AutoAssign:  # AutoAssign
             # Get all the shading groups to reassign
@@ -510,13 +511,15 @@ class ShaderMaker(QtWidgets.QDialog):
                 if shader.is_enabled():
                     obj = sphere()[0]
                     obj.translate.set([dtx * i, 0, 0])
-                    shading_group = sets(name="SG", empty=True, renderable=True, noSurfaceShader=True)
+
+                    shading_group = sets(name=shader.get_title()+"_sg", empty=True, renderable=True, noSurfaceShader=True)
                     arnold_node, displacement_node = shader.generate_shading_nodes()
                     arnold_node.outColor >> shading_group.surfaceShader
                     if displacement_node is not None:
                         displacement_node.displacement >> shading_group.displacementShader
                     sets(shading_group, forceElement=obj)
                     i += 1
+        undoInfo(closeChunk = True)
 
     # Delete an existing shader recursively
     def __delete_existing_shader(self, node):
@@ -531,6 +534,7 @@ class ShaderMaker(QtWidgets.QDialog):
 
     # Update file path with model datas
     def __submit_update_shader(self):
+        undoInfo(openChunk = True)
         for directory, data in self.__us_data.items():
             textures = data[0]
             for texture in textures:
@@ -539,6 +543,7 @@ class ShaderMaker(QtWidgets.QDialog):
                 child_enabled = os.path.exists(self.__us_folder_path + "/" + filename)
                 if child_enabled:
                     texture.fileTextureName.set(self.__us_folder_path + "/" + filename)
+        undoInfo(closeChunk = True)
 
     # Change the Assignation type
     def __assign(self, assign_type, enabled):
