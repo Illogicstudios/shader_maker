@@ -401,12 +401,12 @@ class ShaderMaker(QtWidgets.QDialog):
         selection = ls(sl=True, transforms=True)
         distinct_shading_groups = []
         for s in selection:
-            shape = s.getShape()
-            if shape is not None:
-                shading_groups = shape.listConnections(type="shadingEngine")
-                for shading_group in shading_groups:
-                    if shading_group not in distinct_shading_groups:
-                        distinct_shading_groups.append(shading_group)
+            for shape in s.listRelatives(shapes=True, allDescendents=True):
+                if shape is not None:
+                    shading_groups = shape.listConnections(type="shadingEngine")
+                    for shading_group in shading_groups:
+                        if shading_group not in distinct_shading_groups:
+                            distinct_shading_groups.append(shading_group)
 
         for shading_group in distinct_shading_groups:
             textures = self.__get_textures_recursive(shading_group)
