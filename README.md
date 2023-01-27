@@ -1,4 +1,4 @@
-# shader_maker
+# Shader Maker
 
 Shader Maker is a tool to create Arnold shaders faster and to update textures easily.
 
