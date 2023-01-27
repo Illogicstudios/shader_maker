@@ -9,6 +9,6 @@ if __name__ == '__main__':
     import ShaderMaker
     from ShaderMaker import *
 
-    unload_packages(silent=True, packages=["ShaderMaker", "Shader"])
+    unload_packages(silent=True, packages=["ShaderMaker", "Shader", "IdealFlowLayout"])
     ltp = ShaderMaker()
     ltp.show()

@@ -23,6 +23,9 @@ DEFAULT_DIR_BROWSE = "I:/"
 
 FILE_EXTENSION_SUPPORTED = ["exr", "jpg", "jpeg", "tif", "png"]
 
+DEFAULT_DISPLACEMENT_SCALE = 0.02
+DEFAULT_DISPLACEMENT_MID = 0
+
 ########################################################################################################################
 
 FILE_EXTENSION_SUPPORTED_REGEX = "|".join(FILE_EXTENSION_SUPPORTED)
@@ -80,6 +83,8 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__assign_cs = Assignation.AutoAssign
         self.__us_folder_path = ""
         self.__us_data = {}
+        self.__displacement_scale = DEFAULT_DISPLACEMENT_SCALE
+        self.__displacement_mid = DEFAULT_DISPLACEMENT_MID
 
         # UI attributes
         self.__reinit_ui()
@@ -110,11 +115,9 @@ class ShaderMaker(QtWidgets.QDialog):
 
     # initialize the ui
     def __reinit_ui(self):
-        self.__ui_width = 900
-        self.__ui_height = 800
-        self.__ui_min_width = 700
-        self.__ui_min_height = 400
-        self.__ui_cs_nb_col = 1
+        self.__ui_width = 750
+        self.__ui_height = 700
+        self.__ui_min_height = 200
         self.__ui_cs_folder_path = None
         self.__ui_us_folder_path = None
         self.__ui_cs_submit_btn = None
@@ -150,41 +153,38 @@ class ShaderMaker(QtWidgets.QDialog):
     def __create_ui(self):
         # Reinit attributes of the UI
         self.__reinit_ui()
-        self.setMinimumSize(self.__ui_min_width, self.__ui_min_height)
+        self.setMinimumHeight(self.__ui_min_height)
+        self.setFixedWidth(self.__ui_width)
         self.resize(self.__ui_width, self.__ui_height)
         self.move(QtWidgets.QDesktopWidget().availableGeometry().center() - self.frameGeometry().center())
 
         browse_icon_path = os.path.dirname(__file__) + "/assets/browse.png"
 
         # Some aesthetic value
-        size_btn = QtCore.QSize(180, 30)
+        size_btn = QtCore.QSize(180, 40)
         icon_size = QtCore.QSize(18, 18)
         btn_icon_size = QtCore.QSize(24, 24)
 
-        # Main Layout
-        main_lyt = QtWidgets.QHBoxLayout()
-        main_lyt.setContentsMargins(10, 15, 10, 15)
-        main_lyt.setSpacing(12)
+        main_lyt = QtWidgets.QVBoxLayout()
         self.setLayout(main_lyt)
+        tab_widget = QtWidgets.QTabWidget()
+        main_lyt.addWidget(tab_widget)
 
         # Layout ML.1 : Create shaders
         cs_lyt = QtWidgets.QVBoxLayout()
+        cs_lyt.setSpacing(4)
+        cs_lyt.setMargin(5)
         cs_lyt.setAlignment(QtCore.Qt.AlignTop)
-        main_lyt.addLayout(cs_lyt, 1)
-
-        # Separator ML.1 | ML.2
-        sep = QtWidgets.QFrame()
-        sep.setMinimumWidth(1)
-        sep.setFixedWidth(2)
-        sep.setFrameShape(QtWidgets.QFrame.VLine)
-        sep.setFrameShadow(QtWidgets.QFrame.Sunken)
-        sep.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
-        main_lyt.addWidget(sep)
+        cs_widget = QtWidgets.QWidget()
+        cs_widget.setLayout(cs_lyt)
+        tab_widget.addTab(cs_widget, "Create Shader")
 
         # Layout ML.2 : Update shaders
         us_lyt = QtWidgets.QVBoxLayout()
         us_lyt.setAlignment(QtCore.Qt.AlignTop)
-        main_lyt.addLayout(us_lyt, 1)
+        us_widget = QtWidgets.QWidget()
+        us_widget.setLayout(us_lyt)
+        tab_widget.addTab(us_widget, "Update Texture Paths")
 
         # Layout ML.1.1 : Folder
         folder_cs_lyt = QtWidgets.QHBoxLayout()
@@ -201,17 +201,40 @@ class ShaderMaker(QtWidgets.QDialog):
         browse_cs_btn.clicked.connect(partial(self.__browse_cs_folder))
         folder_cs_lyt.addWidget(browse_cs_btn)
 
-        # Layout ML.1.2 : Shaders
+        # Layout ML.1.2 : Header
+        self.__ui_widget_header = QtWidgets.QWidget()
+        header_shaders_cs_lyt = QtWidgets.QVBoxLayout(self.__ui_widget_header)
+        header_shaders_cs_lyt.setMargin(0)
+        Shader.generate_header(self, header_shaders_cs_lyt)
+        self.__ui_widget_header.setVisible(True)
+        cs_lyt.addWidget(self.__ui_widget_header)
+
+        # Layout ML.1.3 : Shaders
         self.__ui_shaders_cs_lyt = QtWidgets.QVBoxLayout()
         cs_lyt.addLayout(self.__ui_shaders_cs_lyt)
 
-        # Layout ML.1.3 : Submit creation
+        # Layout ML.1.4 : Displacement scale
+        displacement_scale_form = QtWidgets.QFormLayout()
+        validator = QtGui.QRegExpValidator(QtCore.QRegExp(r"[0-9]+(\.[0-9]*)?"))
+        displacement_scale_edit = QtWidgets.QLineEdit(str(self.__displacement_scale))
+        displacement_scale_edit.setValidator(validator)
+        displacement_scale_edit.textChanged.connect(self.__displacement_scale_changed)
+        displacement_mid_edit = QtWidgets.QLineEdit(str(self.__displacement_mid))
+        displacement_mid_edit.setValidator(validator)
+        displacement_mid_edit.textChanged.connect(self.__displacement_mid_changed)
+        displacement_scale_form.addRow(QtWidgets.QLabel("Displacement scale"), displacement_scale_edit)
+        displacement_scale_form.addRow(QtWidgets.QLabel("Displacement mid"), displacement_mid_edit)
+        cs_lyt.addLayout(displacement_scale_form)
+
+        # Layout ML.1.5 : Submit creation
         submit_creation_lyt = QtWidgets.QHBoxLayout()
         submit_creation_lyt.setAlignment(QtCore.Qt.AlignCenter)
+        submit_creation_lyt.setMargin(5)
         cs_lyt.addLayout(submit_creation_lyt)
 
-        button_group_lyt = QtWidgets.QVBoxLayout()
-        button_group_lyt.setAlignment(QtCore.Qt.AlignRight)
+        button_group_lyt = QtWidgets.QHBoxLayout()
+        button_group_lyt.setAlignment(QtCore.Qt.AlignCenter)
+        button_group_lyt.setMargin(5)
         button_group_cs = QtWidgets.QButtonGroup()
         self.__auto_assign_radio = QtWidgets.QRadioButton("Replace by shader name")
         self.__auto_assign_radio.setChecked(True)
@@ -235,7 +258,7 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__ui_cs_submit_btn.setFixedSize(size_btn)
         self.__ui_cs_submit_btn.setEnabled(False)
         self.__ui_cs_submit_btn.clicked.connect(self.__submit_create_shader)
-        submit_creation_lyt.addWidget(self.__ui_cs_submit_btn)
+        submit_creation_lyt.addWidget(self.__ui_cs_submit_btn, QtCore.Qt.AlignRight)
 
         # Layout ML.2.1 : Folder
         folder_us_lyt = QtWidgets.QHBoxLayout()
@@ -258,11 +281,19 @@ class ShaderMaker(QtWidgets.QDialog):
         us_lyt.addWidget(self.__ui_tree_us_files)
 
         # Button ML.2.3 : Submit update
-        self.__ui_us_submit_btn = QtWidgets.QPushButton("Update shaders")
+        self.__ui_us_submit_btn = QtWidgets.QPushButton("Update Texture Paths")
         self.__ui_us_submit_btn.setFixedSize(size_btn)
         self.__ui_us_submit_btn.setEnabled(False)
         self.__ui_us_submit_btn.clicked.connect(self.__submit_update_shader)
         us_lyt.addWidget(self.__ui_us_submit_btn, 0, QtCore.Qt.AlignHCenter)
+
+    def __displacement_scale_changed(self, value):
+        if len(value) > 0:
+            self.__displacement_scale = float(value)
+
+    def __displacement_mid_changed(self, value):
+        if len(value) > 0:
+            self.__displacement_mid = float(value)
 
     # Refresh the ui according to the model attribute
     def __refresh_ui(self):
@@ -292,32 +323,23 @@ class ShaderMaker(QtWidgets.QDialog):
     def __refresh_cs_body(self):
         # Refresh the body of the creation part
         nb_shaders = len(self.__cs_shaders)
+        self.__ui_widget_header.setVisible(nb_shaders > 0)
         if self.__ui_shaders_cs_lyt is not None:
             utils.clear_layout(self.__ui_shaders_cs_lyt)
-            grid_shaders = QtWidgets.QGridLayout()
+            list_shaders_lyt = QtWidgets.QVBoxLayout()
+            list_shaders_lyt.setContentsMargins(2, 2, 2, 2)
+            list_shaders_lyt.setSpacing(2)
+            list_shaders_lyt.setAlignment(QtCore.Qt.AlignTop)
             scroll_area = QtWidgets.QScrollArea()
             scroll_area.setWidgetResizable(True)
-            grid_shaders.setAlignment(QtCore.Qt.AlignTop)
+            list_shaders_lyt.setAlignment(QtCore.Qt.AlignTop)
             scroll_area_widget = QtWidgets.QWidget()
             scroll_area.setWidget(scroll_area_widget)
-            scroll_area_widget.setLayout(grid_shaders)
+            scroll_area_widget.setLayout(list_shaders_lyt)
             self.__ui_shaders_cs_lyt.addWidget(scroll_area)
-            width = self.width()
             if nb_shaders > 0:
-                index_row = 0
-                index_col = 0
-                if nb_shaders < self.__ui_cs_nb_col:
-                    max_size_elem = (width - 40 - (nb_shaders - 1) * 15) / nb_shaders
-                else:
-                    max_size_elem = (width - 40 - (self.__ui_cs_nb_col - 1) * 15) / self.__ui_cs_nb_col
-
                 for shader in self.__cs_shaders:
-                    shader.populate(self, grid_shaders, index_row, index_col, max_size_elem)
-                    if index_col == self.__ui_cs_nb_col - 1:
-                        index_col = 0
-                        index_row += 1
-                    else:
-                        index_col += 1
+                    shader.populate(self, list_shaders_lyt)
 
     def __refresh_us_body(self):
         # Refresh the body of the update part
@@ -341,7 +363,8 @@ class ShaderMaker(QtWidgets.QDialog):
                     filepath = texture.getAttr("fileTextureName")
                     filename = os.path.basename(filepath)
                     child = QtWidgets.QTreeWidgetItem([filename])
-                    child_enabled = os.path.exists(self.__us_folder_path + "/" + filename)
+                    new_file_path = self.__us_find_file_in_directory(self.__us_folder_path, filename)
+                    child_enabled = new_file_path is not None and new_file_path != filepath
                     update_btn_enabled |= child_enabled
                     child.setDisabled(not child_enabled)
                     item.addChild(child)
@@ -351,6 +374,7 @@ class ShaderMaker(QtWidgets.QDialog):
             if self.__ui_us_submit_btn is not None:
                 self.__ui_us_submit_btn.setEnabled(
                     len(self.__us_data) > 0 and os.path.isdir(self.__us_folder_path) and update_btn_enabled)
+                self.__ui_us_submit_btn.setEnabled(True)
 
     # Refresh UI and model attribute when the fodler of the creation part changes
     def __on_folder_cs_changed(self):
@@ -431,12 +455,10 @@ class ShaderMaker(QtWidgets.QDialog):
 
         if has_texture:
             # If the folder is a shader folder
-            shader = Shader(os.path.basename(self.__cs_folder_path))
-            sub_shaders = shader.load(self.__cs_folder_path)
-            if len(sub_shaders) > 0:
-                self.__cs_shaders.extend(sub_shaders)
-            else:
-                self.__cs_shaders.append(shader)
+            shaders = Shader(os.path.basename(self.__cs_folder_path)).load(self.__cs_folder_path)
+            for shad, nb in shaders:
+                if nb > 0:
+                    self.__cs_shaders.append(shad)
         else:
             # If the folder is a folder of shader folder
             for directory in list_dir:
@@ -448,17 +470,22 @@ class ShaderMaker(QtWidgets.QDialog):
                         has_texture_2 = True
                         break
                 if has_texture_2:
-                    shader = Shader(directory)
-                    sub_shaders = shader.load(dir_path)
-                    if len(sub_shaders) > 0:
-                        self.__cs_shaders.extend(sub_shaders)
-                    else:
-                        self.__cs_shaders.append(shader)
+                    shaders = Shader(directory).load(dir_path)
+                    for shad, nb in shaders:
+                        if nb > 0:
+                            self.__cs_shaders.append(shad)
+
+    def __get_shading_values(self):
+        return {
+            "displacement_scale": self.__displacement_scale,
+            "displacement_mid": self.__displacement_mid
+        }
 
     # Create the shader according to the method of assignation
     def __submit_create_shader(self):
-        undoInfo(openChunk = True)
+        undoInfo(openChunk=True)
         no_items_to_assign = False
+        shading_values = self.__get_shading_values()
         if self.__assign_cs == Assignation.AutoAssign:  # AutoAssign
             # Get all the shading groups to reassign
             to_reassign = {}
@@ -480,7 +507,7 @@ class ShaderMaker(QtWidgets.QDialog):
                 shading_nodes = {}
                 for shader in self.__cs_shaders:
                     if shader.is_enabled():
-                        arnold_node, displacement_node = shader.generate_shading_nodes()
+                        arnold_node, displacement_node = shader.generate_shading_nodes(shading_values)
                         shading_nodes[shader.get_title()] = {arnold_node, displacement_node}
 
                 for shading_group, shader_title in to_reassign.items():
@@ -497,7 +524,7 @@ class ShaderMaker(QtWidgets.QDialog):
                 # Generate new shader and assign to shading group
                 for shader in self.__cs_shaders:
                     if shader.is_enabled():
-                        arnold_node, displacement_node = shader.generate_shading_nodes()
+                        arnold_node, displacement_node = shader.generate_shading_nodes(shading_values)
                         arnold_node.outColor >> shading_group.surfaceShader
                         displacement_node.displacement >> shading_group.displacementShader
                 # Assign the object in the shading group
@@ -512,14 +539,15 @@ class ShaderMaker(QtWidgets.QDialog):
                     obj = sphere()[0]
                     obj.translate.set([dtx * i, 0, 0])
 
-                    shading_group = sets(name=shader.get_title()+"_sg", empty=True, renderable=True, noSurfaceShader=True)
-                    arnold_node, displacement_node = shader.generate_shading_nodes()
+                    shading_group = sets(name=shader.get_title() + "_sg", empty=True, renderable=True,
+                                         noSurfaceShader=True)
+                    arnold_node, displacement_node = shader.generate_shading_nodes(shading_values)
                     arnold_node.outColor >> shading_group.surfaceShader
                     if displacement_node is not None:
                         displacement_node.displacement >> shading_group.displacementShader
                     sets(shading_group, forceElement=obj)
                     i += 1
-        undoInfo(closeChunk = True)
+        undoInfo(closeChunk=True)
 
     # Delete an existing shader recursively
     def __delete_existing_shader(self, node):
@@ -534,16 +562,40 @@ class ShaderMaker(QtWidgets.QDialog):
 
     # Update file path with model datas
     def __submit_update_shader(self):
-        undoInfo(openChunk = True)
+        undoInfo(openChunk=True)
         for directory, data in self.__us_data.items():
             textures = data[0]
             for texture in textures:
                 filepath = texture.getAttr("fileTextureName")
                 filename = os.path.basename(filepath)
-                child_enabled = os.path.exists(self.__us_folder_path + "/" + filename)
-                if child_enabled:
-                    texture.fileTextureName.set(self.__us_folder_path + "/" + filename)
-        undoInfo(closeChunk = True)
+                new_file_path = self.__us_find_file_in_directory(self.__us_folder_path, filename)
+                if new_file_path is not None and new_file_path != filepath:
+                    texture.fileTextureName.set(new_file_path)
+        self.__generate_us_data()
+        self.__refresh_us_body()
+        undoInfo(closeChunk=True)
+
+    def __us_find_file_in_directory(self, directory, filename, depth=4):
+        if depth > 0:
+            exists = os.path.exists(directory + "/" + filename)
+            if exists:
+                return directory + "/" + filename
+            else:
+                if os.path.exists(directory):
+                    for d in os.scandir(directory):
+                        if d.is_dir():
+                            filepath = self.__us_find_file_in_directory(d.path.replace('\\', '/'), filename, depth - 1)
+                            if filepath is not None:
+                                return filepath
+        return None
+
+    def set_all_shaders_enabled(self, enabled):
+        for shader in self.__cs_shaders:
+            shader.set_enabled(enabled)
+
+    def set_all_field_enabled(self, keyword, enabled):
+        for shader in self.__cs_shaders:
+            shader.set_field_enabled(keyword, enabled)
 
     # Change the Assignation type
     def __assign(self, assign_type, enabled):

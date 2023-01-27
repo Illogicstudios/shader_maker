@@ -1,6 +1,6 @@
 main.py
 assets/textures/
-assets/panda_scene.ma
+assets/*.ma
 
 .idea
 
