@@ -1,6 +1,6 @@
 # Shader Maker
 
-Shader Maker is a tool to create Arnold shaders faster and to update textures easily.
+Shader Maker is a Maya tool to create Arnold shaders faster and to update textures easily.
 
 ## How to install
 
@@ -11,7 +11,9 @@ if __name__ == '__main__':
     install_dir = 'PATH/TO/shader_maker'
     # [...]
 ```
- 
+
+---
+
 ## Features
 
 ### Create Shader Part
