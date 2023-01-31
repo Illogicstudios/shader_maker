@@ -181,6 +181,8 @@ class ShaderMaker(QtWidgets.QDialog):
 
         # Layout ML.2 : Update shaders
         us_lyt = QtWidgets.QVBoxLayout()
+        us_lyt.setSpacing(4)
+        us_lyt.setMargin(5)
         us_lyt.setAlignment(QtCore.Qt.AlignTop)
         us_widget = QtWidgets.QWidget()
         us_widget.setLayout(us_lyt)
