@@ -9,32 +9,32 @@ from IdealFlowLayout import IdealFlowLayout
 
 SHADER_FIELDS = {
     "Base Color": {
-        "rule":r"(.*)(?:basecolor|albedo|diffuse).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
-        "color_enabled":(86, 216, 121), "color_disabled":(19, 51, 28)
+        "rule": r"(.*)(?:basecolor|albedo|diffuse).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
+        "color_enabled": (86, 216, 121), "color_disabled": (19, 51, 28)
     },
     "Normal": {
-        "rule":r"((?:(?!combine).)*)(?:normal)(?:(?!combine).)*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
-        "color_enabled":(128, 128, 255), "color_disabled":(32, 32, 64)
+        "rule": r"((?:(?!combine).)*)(?:normal)(?:(?!combine).)*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
+        "color_enabled": (128, 128, 255), "color_disabled": (32, 32, 64)
     },
     "Displacement": {
-        "rule":r"(.*)(?:height|displacement|disp).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
-        "color_enabled":(243, 112, 112), "color_disabled":(54, 25, 25)
+        "rule": r"(.*)(?:height|displacement|disp).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
+        "color_enabled": (243, 112, 112), "color_disabled": (54, 25, 25)
     },
     "Roughness": {
-        "rule":r"(.*)(?:roughness).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
-        "color_enabled":(152, 104, 223), "color_disabled":(35, 22, 52)
+        "rule": r"(.*)(?:roughness).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
+        "color_enabled": (152, 104, 223), "color_disabled": (35, 22, 52)
     },
     "Metalness": {
-        "rule":r"(.*)(?:metalness).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
-        "color_enabled":(189, 231, 231), "color_disabled":(54, 66, 66)
+        "rule": r"(.*)(?:metalness).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
+        "color_enabled": (189, 231, 231), "color_disabled": (54, 66, 66)
     },
     "Emissive": {
-        "rule":r"(.*)(?:emissive).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
-        "color_enabled":(247, 247, 108), "color_disabled":(51, 51, 21)
+        "rule": r"(.*)(?:emissive).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
+        "color_enabled": (247, 247, 108), "color_disabled": (51, 51, 21)
     },
     "SSS Amount": {
-        "rule":r"(.*)(?:sssamount).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
-        "color_enabled":(231, 164, 121), "color_disabled":(78, 54, 39)
+        "rule": r"(.*)(?:sssamount).*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")",
+        "color_enabled": (231, 164, 121), "color_disabled": (78, 54, 39)
     },
 }
 
@@ -44,7 +44,7 @@ SHADER_FIELDS = {
 
 # A Texture field in the shader
 class ShaderField:
-    def __init__(self, rule,color_enabled,color_disabled):
+    def __init__(self, rule, color_enabled, color_disabled):
         self.__regexp = rule
         self.__file_name = ""
         self.__color_enabled = color_enabled
@@ -52,7 +52,7 @@ class ShaderField:
         self.__enabled = True
         self.__btn = None
 
-    def set_btn(self,btn):
+    def set_btn(self, btn):
         self.__btn = btn
 
     def get_file_name(self):
@@ -80,19 +80,22 @@ class ShaderField:
 
     def refresh_btn(self):
         if self.__btn is not None:
-            if self.__enabled :
+            if self.__enabled:
                 color = self.__color_enabled
                 color_text = "black"
             else:
                 color = self.__color_disabled
                 color_text = "gray"
 
-            self.__btn.setStyleSheet("background-color:rgb("+str(color[0])+","+str(color[1])+","+str(color[2])+");color:"+color_text)
+            self.__btn.setStyleSheet("background-color:rgb(" + str(color[0]) + "," + str(color[1]) + "," + str(
+                color[2]) + ");color:" + color_text)
+
 
 class Shader:
     ALL_SHADER_ENABLED_CHECKBOX = QtWidgets.QCheckBox()
     ALL_SHADER_ENABLED_CHECKBOX.setChecked(True)
-    ALL_FIELD_STATE = {k:{"enabled":True,"btn":QtWidgets.QPushButton(k)} for k in SHADER_FIELDS.keys()}
+    ALL_FIELD_STATE = {k: {"enabled": True, "btn": QtWidgets.QPushButton(k)} for k in SHADER_FIELDS.keys()}
+
     @staticmethod
     def __header_enabled_changed(shader_maker, checked):
         shader_maker.set_all_shaders_enabled(checked)
@@ -101,23 +104,24 @@ class Shader:
     def __header_field_btn_changed(shader_maker, keyword):
         Shader.ALL_FIELD_STATE[keyword]["enabled"] = not Shader.ALL_FIELD_STATE[keyword]["enabled"]
         shader_maker.set_all_field_enabled(keyword, Shader.ALL_FIELD_STATE[keyword]["enabled"])
-        Shader.refresh_header_btn(keyword,Shader.ALL_FIELD_STATE[keyword]["btn"])
+        Shader.refresh_header_btn(keyword, Shader.ALL_FIELD_STATE[keyword]["btn"])
 
     @staticmethod
-    def refresh_header_btn(keyword,btn):
-        if  Shader.ALL_FIELD_STATE[keyword]["enabled"] :
+    def refresh_header_btn(keyword, btn):
+        if Shader.ALL_FIELD_STATE[keyword]["enabled"]:
             color = SHADER_FIELDS[keyword]["color_enabled"]
             color_text = "black"
         else:
             color = SHADER_FIELDS[keyword]["color_disabled"]
             color_text = "gray"
 
-        btn.setStyleSheet("background-color:rgb("+str(color[0])+","+str(color[1])+","+str(color[2])+");color:"+color_text)
+        btn.setStyleSheet("background-color:rgb(" + str(color[0]) + "," + str(color[1]) + "," + str(
+            color[2]) + ");color:" + color_text)
 
     @staticmethod
     def generate_header(shader_maker, lyt):
         shader_card = QtWidgets.QHBoxLayout()
-        shader_card.setContentsMargins(9,5,9,5)
+        shader_card.setContentsMargins(9, 5, 9, 5)
         shader_card.setSpacing(5)
         frame_shader_card = QtWidgets.QFrame()
         frame_shader_card.setStyleSheet("background-color:rgb(45,45,45)")
@@ -143,7 +147,7 @@ class Shader:
             btn = Shader.ALL_FIELD_STATE[keyword]["btn"]
             btn.setFixedSize(QtCore.QSize(btn.sizeHint().width(), btn.sizeHint().height()))
             btn.clicked.connect(partial(Shader.__header_field_btn_changed, shader_maker, keyword))
-            Shader.refresh_header_btn(keyword,btn)
+            Shader.refresh_header_btn(keyword, btn)
             flow_layout.addWidget(btn)
         shader_card.addLayout(flow_layout)
 
@@ -153,7 +157,7 @@ class Shader:
         self.__shader_fields = {}
         for keyword, fields_info in SHADER_FIELDS.items():
             self.__shader_fields[keyword] = ShaderField(fields_info["rule"],
-                                                        fields_info["color_enabled"],fields_info["color_disabled"])
+                                                        fields_info["color_enabled"], fields_info["color_disabled"])
         self.__title = title
         self.__dir_path = ""
         self.__ui_checkbox = None
@@ -164,7 +168,7 @@ class Shader:
     def get_title(self):
         return self.__title
 
-    def set_field_enabled(self,keyword,enabled):
+    def set_field_enabled(self, keyword, enabled):
         self.__shader_fields[keyword].set_enabled(enabled)
 
     def set_enabled(self, enabled):
@@ -206,7 +210,7 @@ class Shader:
                 shader.__dir_path = folder_path
                 for keyword, file_names in field_datas.items():
                     shader.__shader_fields[keyword].set_file_name(folder_path + "/" + file_names[0])
-                shaders.append((shader,len(field_datas)))
+                shaders.append((shader, len(field_datas)))
             return shaders
         # If only one shader keep the current one
         elif nb_file_field_match == 1:
@@ -217,7 +221,7 @@ class Shader:
             shader_val = list(field_file_match.values())[0]
             for keyword, file_names in shader_val.items():
                 self.__shader_fields[keyword].set_file_name(folder_path + "/" + file_names[0])
-            return [(self,len(shader_val))]
+            return [(self, len(shader_val))]
         return []
 
     # Populate the ui with the data of the shader
@@ -258,8 +262,6 @@ class Shader:
 
         lyt.addWidget(frame_shader_card)
 
-
-
     def __enabled_changed(self, shader_maker, checked):
         self.__enabled = checked == QtCore.Qt.Checked
         shader_maker.refresh_btn()
@@ -289,6 +291,7 @@ class Shader:
             in_tex.outUV >> roughness.uvCoord
             roughness.outColorR >> remap_value.inputValue
             remap_value.outValue >> out_tex.specularRoughness
+
     def __generate_normal(self, in_tex, out_tex):
         field = self.__shader_fields["Normal"]
         if field.is_found() and field.is_enabled():
@@ -311,8 +314,7 @@ class Shader:
             in_tex.outUV >> metalness.uvCoord
             metalness.outColorR >> out_tex.metalness
 
-    def __generate_displacement(self, in_tex,displacement_scale,displacement_mid):
-        # TODO MID
+    def __generate_displacement(self, in_tex, displacement_scale, displacement_mid):
         displacement_node = None
         field = self.__shader_fields["Displacement"]
         if field.is_found() and field.is_enabled():
@@ -327,7 +329,7 @@ class Shader:
             height.outColorR >> displacement_node.displacement
         return displacement_node
 
-    def __generate_sss_amount(self,in_tex,out_tex):
+    def __generate_sss_amount(self, in_tex, out_tex):
         field = self.__shader_fields["SSS Amount"]
         if field.is_found() and field.is_enabled():
             sss_amount_file_name = self.__shader_fields["SSS Amount"].get_file_name()
@@ -339,7 +341,7 @@ class Shader:
             sss_amount.outColorR >> remap_value.inputValue
             remap_value.outValue >> out_tex.subsurface
 
-    def __generate_emissive(self,in_tex,out_tex):
+    def __generate_emissive(self, in_tex, out_tex):
         field = self.__shader_fields["Emissive"]
         if field.is_found() and field.is_enabled():
             emissive_file_name = self.__shader_fields["Emissive"].get_file_name()
@@ -357,12 +359,13 @@ class Shader:
 
         arnold_node = shadingNode("aiStandardSurface", asShader=True, name=self.__title)
 
-        self.__generate_base_color(place_texture,arnold_node)
-        self.__generate_roughness(place_texture,arnold_node)
-        self.__generate_metalness(place_texture,arnold_node)
-        self.__generate_normal(place_texture,arnold_node)
-        displacement_node = self.__generate_displacement(place_texture,values["displacement_scale"],values["displacement_mid"])
-        self.__generate_sss_amount(place_texture,arnold_node)
-        self.__generate_emissive(place_texture,arnold_node)
+        self.__generate_base_color(place_texture, arnold_node)
+        self.__generate_roughness(place_texture, arnold_node)
+        self.__generate_metalness(place_texture, arnold_node)
+        self.__generate_normal(place_texture, arnold_node)
+        displacement_node = self.__generate_displacement(place_texture, values["displacement_scale"],
+                                                         values["displacement_mid"])
+        self.__generate_sss_amount(place_texture, arnold_node)
+        self.__generate_emissive(place_texture, arnold_node)
 
         return {arnold_node, displacement_node}
