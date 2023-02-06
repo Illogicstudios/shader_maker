@@ -515,7 +515,8 @@ class ShaderMaker(QtWidgets.QDialog):
                 for shading_group, shader_title in to_reassign.items():
                     arnold_node, displacement_node = shading_nodes[shader_title]
                     arnold_node.outColor >> shading_group.surfaceShader
-                    displacement_node.displacement >> shading_group.displacementShader
+                    if displacement_node is not None:
+                        displacement_node.displacement >> shading_group.displacementShader
 
         elif self.__assign_cs == Assignation.AssignToSelection:  # AssignToSelection
             selection = ls(sl=True, transforms=True)
@@ -528,7 +529,8 @@ class ShaderMaker(QtWidgets.QDialog):
                     if shader.is_enabled():
                         arnold_node, displacement_node = shader.generate_shading_nodes(shading_values)
                         arnold_node.outColor >> shading_group.surfaceShader
-                        displacement_node.displacement >> shading_group.displacementShader
+                        if displacement_node is not None:
+                            displacement_node.displacement >> shading_group.displacementShader
                 # Assign the object in the shading group
                 for obj in selection:
                     sets(shading_group, forceElement=obj)
