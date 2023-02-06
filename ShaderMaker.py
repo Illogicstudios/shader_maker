@@ -154,7 +154,7 @@ class ShaderMaker(QtWidgets.QDialog):
         # Reinit attributes of the UI
         self.__reinit_ui()
         self.setMinimumHeight(self.__ui_min_height)
-        self.setFixedWidth(self.__ui_width)
+        self.setMinimumWidth(self.__ui_width)
         self.resize(self.__ui_width, self.__ui_height)
         self.move(QtWidgets.QDesktopWidget().availableGeometry().center() - self.frameGeometry().center())
 
@@ -430,14 +430,21 @@ class ShaderMaker(QtWidgets.QDialog):
     # Generate model data for the update part
     def __generate_us_data(self):
         self.__us_data.clear()
+        textures_added = {}
         for texture, shading_group in self.__get_us_shading_groups_and_textures():
             dirname = os.path.dirname(texture.getAttr("fileTextureName"))
             if dirname not in self.__us_data:
                 self.__us_data[dirname] = [[], []]
-            self.__us_data[dirname][0].append(texture)
+                textures_added[dirname] = []
+
+            filepath_texture = texture.getAttr("fileTextureName")
+            if filepath_texture not in textures_added[dirname]:
+                self.__us_data[dirname][0].append(texture)
+                textures_added[dirname].append(filepath_texture)
 
             if shading_group not in self.__us_data[dirname][1]:
                 self.__us_data[dirname][1].append(shading_group)
+        print(self.__us_data)
 
     # Generate the model data for the creatino part
     def __generate_cs_shaders(self):
