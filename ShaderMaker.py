@@ -556,13 +556,15 @@ class ShaderMaker(QtWidgets.QDialog):
     # Delete an existing shader recursively
     def __delete_existing_shader(self, node):
         for s in node.inputs():
-            if s.type() != "transform":
-                self.__delete_existing_shader(s)
-                try:
-                    if "default" not in s.name():
-                        delete(s)
-                except:
-                    pass
+            if objExists(s):
+                if s.type() != "transform":
+                    self.__delete_existing_shader(s)
+                    try:
+                        if "default" not in s.name():
+                            delete(s)
+                    except:
+                        pass
+        print("Existsing shaders deleted")
 
     # Update file path with model datas
     def __submit_update_shader(self):
