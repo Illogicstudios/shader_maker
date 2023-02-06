@@ -183,7 +183,7 @@ class Shader:
         # Get all the texture files of the folder
         files_name_list = [f for f in os.listdir(folder_path) if
                            isfile(join(folder_path, f)) and re.match(
-                               r".*\.(" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")", f, re.IGNORECASE)]
+                               r".*\.(?:" + ShaderMaker.FILE_EXTENSION_SUPPORTED_REGEX + ")", f, re.IGNORECASE)]
         files_name_list.sort(key=str)
         files_name_list.reverse()
         # Sort and store objects according to their prefix to detect if many shaders are in the folder
