@@ -110,7 +110,7 @@ class ShaderMaker(QtWidgets.QDialog):
             OpenMaya.MEventMessage.addEventCallback("SelectionChanged", self.on_selection_changed)
 
     # Remove callback
-    def closeEvent(self, arg__1: QtGui.QCloseEvent) -> None:
+    def hideEvent(self, arg__1: QtGui.QCloseEvent) -> None:
         OpenMaya.MMessage.removeCallback(self.__us_selection_callback)
 
     # initialize the ui
