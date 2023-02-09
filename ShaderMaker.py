@@ -10,14 +10,20 @@ import maya.OpenMayaUI as omui
 from PySide2 import QtCore
 from PySide2 import QtGui
 from PySide2 import QtWidgets
+from PySide2.QtWidgets import *
+from PySide2.QtGui import *
+from PySide2.QtCore import *
 
 from shiboken2 import wrapInstance
 
 import utils
+from Prefs import *
 
 import maya.OpenMaya as OpenMaya
 
 ########################################################################################################################
+
+_FILE_NAME_PREFS = "shader_maker"
 
 DEFAULT_DIR_BROWSE = "I:/"
 
@@ -77,6 +83,11 @@ class ShaderMaker(QtWidgets.QDialog):
     def __init__(self, prnt=wrapInstance(int(omui.MQtUtil.mainWindow()), QtWidgets.QWidget)):
         super(ShaderMaker, self).__init__(prnt)
 
+        # Common Preferences (common preferences on all tools)
+        self.__common_prefs = Prefs()
+        # Preferences for this tool
+        self.__prefs = Prefs(_FILE_NAME_PREFS)
+
         # Model attributes
         self.__cs_folder_path = ""
         self.__cs_shaders = []
@@ -87,7 +98,21 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__displacement_mid = DEFAULT_DISPLACEMENT_MID
 
         # UI attributes
-        self.__reinit_ui()
+        self.__ui_width = 750
+        self.__ui_height = 700
+        self.__ui_min_width = 750
+        self.__ui_min_height = 200
+        self.__ui_pos = QDesktopWidget().availableGeometry().center() - QPoint(self.__ui_width,self.__ui_height)/2
+        self.__ui_cs_folder_path = None
+        self.__ui_us_folder_path = None
+        self.__ui_cs_submit_btn = None
+        self.__ui_us_submit_btn = None
+        self.__ui_shaders_cs_lyt = None
+        self.__auto_assign_radio = None
+        self.__assign_to_selection_radio = None
+        self.__no_assign_radio = None
+
+        self.__retrieve_prefs()
 
         # Retrieve us data
         self.__generate_us_data()
@@ -104,6 +129,21 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__refresh_ui()
         self.__create_callback()
 
+
+    # Save preferences
+    def __save_prefs(self):
+        size = self.size()
+        self.__prefs["window_size"] = {"width": size.width(), "height": size.height()}
+        pos = self.pos()
+        self.__prefs["window_pos"] = {"x": pos.x(), "y": pos.y()}
+
+    # Retrieve preferences
+    def __retrieve_prefs(self):
+        if "window_pos" in self.__prefs:
+            pos = self.__prefs["window_pos"]
+            self.__ui_pos = QPoint(pos["x"],pos["y"])
+
+
     # Create a callback for when new Maya selection
     def __create_callback(self):
         self.__us_selection_callback = \
@@ -112,22 +152,8 @@ class ShaderMaker(QtWidgets.QDialog):
     # Remove callback
     def hideEvent(self, arg__1: QtGui.QCloseEvent) -> None:
         OpenMaya.MMessage.removeCallback(self.__us_selection_callback)
+        self.__save_prefs()
 
-    # initialize the ui
-    def __reinit_ui(self):
-        self.__ui_width = 750
-        self.__ui_height = 700
-        self.__ui_min_height = 200
-        self.__ui_cs_folder_path = None
-        self.__ui_us_folder_path = None
-        self.__ui_cs_submit_btn = None
-        self.__ui_us_submit_btn = None
-        self.__ui_shaders_cs_lyt = None
-        self.__auto_assign_radio = None
-        self.__assign_to_selection_radio = None
-        self.__no_assign_radio = None
-
-    # Get the parent directory of the scene or a default one
 
     # Function to browse a new folder for the creation part
     def __browse_cs_folder(self):
@@ -152,11 +178,9 @@ class ShaderMaker(QtWidgets.QDialog):
     # Create the ui
     def __create_ui(self):
         # Reinit attributes of the UI
-        self.__reinit_ui()
-        self.setMinimumHeight(self.__ui_min_height)
-        self.setMinimumWidth(self.__ui_width)
+        self.setMinimumSize(self.__ui_min_width, self.__ui_min_height)
         self.resize(self.__ui_width, self.__ui_height)
-        self.move(QtWidgets.QDesktopWidget().availableGeometry().center() - self.frameGeometry().center())
+        self.move(self.__ui_pos)
 
         browse_icon_path = os.path.dirname(__file__) + "/assets/browse.png"
 
