@@ -12,8 +12,8 @@ if __name__ == '__main__':
     unload_packages(silent=True, packages=["ShaderMaker", "Shader", "IdealFlowLayout","Prefs"])
 
     try:
-        app.close()
+        shader_maker.close()
     except:
         pass
-    app = ShaderMaker()
-    app.show()
+    shader_maker = ShaderMaker()
+    shader_maker.show()
