@@ -27,7 +27,7 @@ _FILE_NAME_PREFS = "shader_maker"
 
 DEFAULT_DIR_BROWSE = "I:/"
 
-FILE_EXTENSION_SUPPORTED = ["exr", "jpg", "jpeg", "tif", "png"]
+FILE_EXTENSION_SUPPORTED = ["exr", "jpg", "jpeg", "tif", "png", "tx"]
 
 DEFAULT_DISPLACEMENT_SCALE = 0.02
 DEFAULT_DISPLACEMENT_MID = 0
@@ -397,9 +397,9 @@ class ShaderMaker(QtWidgets.QDialog):
                         filename = os.path.basename(filepath)
                         child = QtWidgets.QTreeWidgetItem([filename])
 
-                        base = re.search("(.*)(?:<UDIM>|[0-9]{4})\.(?:exr|jpg|jpeg|tif|png)", filename)
+                        base = re.search("(.*)(?:<UDIM>|[0-9]{4})\.(?:" + FILE_EXTENSION_SUPPORTED_REGEX + ")", filename)
                         match = base.groups()[0]
-                        regex = match.replace(".", "\.") + "((?:[0-9]{0,4})\.(?:exr|jpg|jpeg|tif|png))"
+                        regex = match.replace(".", "\.") + "((?:[0-9]{0,4})\.(?:" + FILE_EXTENSION_SUPPORTED_REGEX + "))"
                         new_file_path = self.__us_find_file_in_directory(
                             self.__us_folder_path, regex)
 
@@ -613,9 +613,9 @@ class ShaderMaker(QtWidgets.QDialog):
                 filepath = texture.getAttr("fileTextureName")
                 filename = os.path.basename(filepath)
 
-                base = re.search("(.*)(?:<UDIM>|[0-9]{4})\.(?:exr|jpg|jpeg|tif|png)", filename)
+                base = re.search("(.*)(?:<UDIM>|[0-9]{4})\.(?:" + FILE_EXTENSION_SUPPORTED_REGEX + ")", filename)
                 match = base.groups()[0]
-                regex = match.replace(".", "\.") + "((?:[0-9]{0,4})\.(?:exr|jpg|jpeg|tif|png))"
+                regex = match.replace(".", "\.") + "((?:[0-9]{0,4})\.(?:" + FILE_EXTENSION_SUPPORTED_REGEX + "))"
 
                 new_file_path = self.__us_find_file_in_directory(self.__us_folder_path, regex)
                 if new_file_path is not None and new_file_path != filepath:
