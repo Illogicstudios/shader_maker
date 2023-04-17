@@ -273,7 +273,7 @@ class Shader:
         field = self.__shader_fields["Base Color"]
         if field.is_found() and field.is_enabled():
             base_color_file_name = self.__shader_fields["Base Color"].get_file_name()
-            base_color = shadingNode("file", asTexture=True, name="Base Color")
+            base_color = pm.shadingNode("file", asTexture=True, name="Base Color")
             base_color.fileTextureName.set(base_color_file_name)
             base_color.uvTilingMode.set(3)
             in_tex.outUV >> base_color.uvCoord
@@ -284,10 +284,10 @@ class Shader:
         field = self.__shader_fields["Roughness"]
         if field.is_found() and field.is_enabled():
             roughness_file_name = self.__shader_fields["Roughness"].get_file_name()
-            roughness = shadingNode("file", asTexture=True, name="Roughness")
+            roughness = pm.shadingNode("file", asTexture=True, name="Roughness")
             roughness.fileTextureName.set(roughness_file_name)
             roughness.uvTilingMode.set(3)
-            remap_value = shadingNode("remapValue", asUtility=True, name="remapValue")
+            remap_value = pm.shadingNode("remapValue", asUtility=True, name="remapValue")
             in_tex.outUV >> roughness.uvCoord
             roughness.outColorR >> remap_value.inputValue
             remap_value.outValue >> out_tex.specularRoughness
@@ -296,10 +296,10 @@ class Shader:
         field = self.__shader_fields["Normal"]
         if field.is_found() and field.is_enabled():
             normal_file_name = self.__shader_fields["Normal"].get_file_name()
-            normal = shadingNode("file", asTexture=True, name="Normal")
+            normal = pm.shadingNode("file", asTexture=True, name="Normal")
             normal.fileTextureName.set(normal_file_name)
             normal.uvTilingMode.set(3)
-            normal_map = shadingNode("aiNormalMap", asUtility=True, name="aiNormalMap")
+            normal_map = pm.shadingNode("aiNormalMap", asUtility=True, name="aiNormalMap")
             in_tex.outUV >> normal.uvCoord
             normal.outColor >> normal_map.input
             normal_map.outValue >> out_tex.normalCamera
@@ -308,7 +308,7 @@ class Shader:
         field = self.__shader_fields["Metalness"]
         if field.is_found() and field.is_enabled():
             metalness_file_name = self.__shader_fields["Metalness"].get_file_name()
-            metalness = shadingNode("file", asTexture=True, name="Metalness")
+            metalness = pm.shadingNode("file", asTexture=True, name="Metalness")
             metalness.fileTextureName.set(metalness_file_name)
             metalness.uvTilingMode.set(3)
             in_tex.outUV >> metalness.uvCoord
@@ -319,10 +319,10 @@ class Shader:
         field = self.__shader_fields["Displacement"]
         if field.is_found() and field.is_enabled():
             height_file_name = self.__shader_fields["Displacement"].get_file_name()
-            height = shadingNode("file", asTexture=True, name="Displacement")
+            height = pm.shadingNode("file", asTexture=True, name="Displacement")
             height.fileTextureName.set(height_file_name)
             height.uvTilingMode.set(3)
-            displacement_node = shadingNode("displacementShader", asUtility=True, name="displacementShader")
+            displacement_node = pm.shadingNode("displacementShader", asUtility=True, name="displacementShader")
             displacement_node.scale.set(displacement_scale)
             displacement_node.aiDisplacementZeroValue.set(displacement_mid)
             in_tex.outUV >> height.uvCoord
@@ -333,10 +333,10 @@ class Shader:
         field = self.__shader_fields["SSS Amount"]
         if field.is_found() and field.is_enabled():
             sss_amount_file_name = self.__shader_fields["SSS Amount"].get_file_name()
-            sss_amount = shadingNode("file", asTexture=True, name="SSS Amount")
+            sss_amount = pm.shadingNode("file", asTexture=True, name="SSS Amount")
             sss_amount.fileTextureName.set(sss_amount_file_name)
             sss_amount.uvTilingMode.set(3)
-            remap_value = shadingNode("remapValue", asUtility=True, name="remapValue")
+            remap_value = pm.shadingNode("remapValue", asUtility=True, name="remapValue")
             in_tex.outUV >> sss_amount.uvCoord
             sss_amount.outColorR >> remap_value.inputValue
             remap_value.outValue >> out_tex.subsurface
@@ -345,19 +345,19 @@ class Shader:
         field = self.__shader_fields["Emissive"]
         if field.is_found() and field.is_enabled():
             emissive_file_name = self.__shader_fields["Emissive"].get_file_name()
-            emissive = shadingNode("file", asTexture=True, name="Emissive")
+            emissive = pm.shadingNode("file", asTexture=True, name="Emissive")
             emissive.fileTextureName.set(emissive_file_name)
             emissive.uvTilingMode.set(3)
-            remap_color = shadingNode("remapColor", asUtility=True, name="remapColor")
+            remap_color = pm.shadingNode("remapColor", asUtility=True, name="remapColor")
             in_tex.outUV >> emissive.uvCoord
             emissive.outColor >> remap_color.color
             remap_color.outColor >> out_tex.emissionColor
 
     # Generate the shader according to the data of the shader
     def generate_shading_nodes(self, values):
-        place_texture = shadingNode("place2dTexture", asUtility=True, name="place2dTexture")
+        place_texture = pm.shadingNode("place2dTexture", asUtility=True, name="place2dTexture")
 
-        arnold_node = shadingNode("aiStandardSurface", asShader=True, name=self.__title)
+        arnold_node = pm.shadingNode("aiStandardSurface", asShader=True, name=self.__title)
 
         self.__generate_base_color(place_texture, arnold_node)
         self.__generate_roughness(place_texture, arnold_node)

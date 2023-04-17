@@ -1,10 +1,11 @@
 import os
 import re
+from enum import Enum
 from functools import partial
 
 import sys
 
-from pymel.core import *
+import pymel.core as pm
 import maya.OpenMayaUI as omui
 
 from PySide2 import QtCore
@@ -73,7 +74,7 @@ class ShaderMaker(QtWidgets.QDialog):
 
     @staticmethod
     def __get_dir_name():
-        scene_name = sceneName()
+        scene_name = pm.sceneName()
         if len(scene_name) > 0:
             dirname = os.path.dirname(os.path.dirname(scene_name))
         else:
@@ -437,7 +438,7 @@ class ShaderMaker(QtWidgets.QDialog):
     # Get the textures and the shading groups of the selection
     def __get_us_shading_groups_and_textures(self):
         files = []
-        selection = ls(sl=True, transforms=True)
+        selection = pm.ls(sl=True, transforms=True)
         distinct_shading_groups = []
         for s in selection:
             for shape in s.listRelatives(shapes=True, allDescendents=True):
@@ -523,13 +524,13 @@ class ShaderMaker(QtWidgets.QDialog):
 
     # Create the shader according to the method of assignation
     def __submit_create_shader(self):
-        undoInfo(openChunk=True)
+        pm.undoInfo(openChunk=True)
         no_items_to_assign = False
         shading_values = self.__get_shading_values()
         if self.__assign_cs == Assignation.AutoAssign:  # AutoAssign
             # Get all the shading groups to reassign
             to_reassign = {}
-            selection = ls(materials=True)
+            selection = pm.ls(materials=True)
             for s in selection:
                 for shader in self.__cs_shaders:
                     if shader.is_enabled() and shader.get_title() == s.name():
@@ -557,11 +558,11 @@ class ShaderMaker(QtWidgets.QDialog):
                         displacement_node.displacement >> shading_group.displacementShader
 
         elif self.__assign_cs == Assignation.AssignToSelection:  # AssignToSelection
-            selection = ls(sl=True, transforms=True)
+            selection = pm.ls(sl=True, transforms=True)
             no_items_to_assign = len(selection) == 0
             if not no_items_to_assign:
                 # Create a new shading group
-                shading_group = sets(name="SG", empty=True, renderable=True, noSurfaceShader=True)
+                shading_group = pm.sets(name="SG", empty=True, renderable=True, noSurfaceShader=True)
                 # Generate new shader and assign to shading group
                 for shader in self.__cs_shaders:
                     if shader.is_enabled():
@@ -571,42 +572,42 @@ class ShaderMaker(QtWidgets.QDialog):
                             displacement_node.displacement >> shading_group.displacementShader
                 # Assign the object in the shading group
                 for obj in selection:
-                    sets(shading_group, forceElement=obj)
+                    pm.sets(shading_group, forceElement=obj)
         if self.__assign_cs == Assignation.NoAssign or no_items_to_assign:  # NoAssignation
             dtx = 1
             i = 0
             # Generate new shader and assign each to an object
             for shader in self.__cs_shaders:
                 if shader.is_enabled():
-                    obj = sphere()[0]
+                    obj = pm.sphere()[0]
                     obj.translate.set([dtx * i, 0, 0])
 
-                    shading_group = sets(name=shader.get_title() + "_sg", empty=True, renderable=True,
+                    shading_group = pm.sets(name=shader.get_title() + "_sg", empty=True, renderable=True,
                                          noSurfaceShader=True)
                     arnold_node, displacement_node = shader.generate_shading_nodes(shading_values)
                     arnold_node.outColor >> shading_group.surfaceShader
                     if displacement_node is not None:
                         displacement_node.displacement >> shading_group.displacementShader
-                    sets(shading_group, forceElement=obj)
+                    pm.sets(shading_group, forceElement=obj)
                     i += 1
-        undoInfo(closeChunk=True)
+        pm.undoInfo(closeChunk=True)
 
     # Delete an existing shader recursively
     def __delete_existing_shader(self, node):
         for s in node.inputs():
-            if objExists(s):
+            if pm.objExists(s):
                 if s.type() != "transform":
                     self.__delete_existing_shader(s)
                     try:
                         if "default" not in s.name():
-                            delete(s)
+                            pm.delete(s)
                     except:
                         pass
         print("Existing shaders deleted")
 
     # Update file path with model datas
     def __submit_update_shader(self):
-        undoInfo(openChunk=True)
+        pm.undoInfo(openChunk=True)
         for directory, data in self.__us_data.items():
             textures = data[0]
             for texture in textures:
@@ -622,7 +623,7 @@ class ShaderMaker(QtWidgets.QDialog):
                     texture.fileTextureName.set(new_file_path)
         self.__generate_us_data()
         self.__refresh_us_body()
-        undoInfo(closeChunk=True)
+        pm.undoInfo(closeChunk=True)
 
     def __us_find_file_in_directory(self, directory, regex, depth=4):
         if depth > 0:
