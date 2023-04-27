@@ -1,9 +1,9 @@
 from os.path import isfile, join
 
-import ShaderMaker
-from ShaderMaker import *
+import shader_maker.ShaderMaker as ShaderMaker
+from .ShaderMaker import *
 
-from IdealFlowLayout import IdealFlowLayout
+from .IdealFlowLayout import IdealFlowLayout
 
 ########################################################################################################################
 

@@ -17,8 +17,8 @@ from PySide2.QtCore import *
 
 from shiboken2 import wrapInstance
 
-import utils
-from Prefs import *
+from common.utils import *
+from common.Prefs import *
 
 import maya.OpenMaya as OpenMaya
 
@@ -37,7 +37,7 @@ DEFAULT_DISPLACEMENT_MID = 0
 
 FILE_EXTENSION_SUPPORTED_REGEX = "|".join(FILE_EXTENSION_SUPPORTED)
 
-from Shader import Shader
+from .Shader import Shader
 
 
 def unload_packages(silent=True, packages=None):
@@ -352,7 +352,7 @@ class ShaderMaker(QtWidgets.QDialog):
         nb_shaders = len(self.__cs_shaders)
         self.__ui_widget_header.setVisible(nb_shaders > 0)
         if self.__ui_shaders_cs_lyt is not None:
-            utils.clear_layout(self.__ui_shaders_cs_lyt)
+            clear_layout(self.__ui_shaders_cs_lyt)
             list_shaders_lyt = QtWidgets.QVBoxLayout()
             list_shaders_lyt.setContentsMargins(2, 2, 2, 2)
             list_shaders_lyt.setSpacing(2)
