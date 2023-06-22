@@ -63,6 +63,7 @@ class ShaderField:
         """
         Setter of the button
         :param btn
+        :return:
         """
         self.__btn = btn
 
@@ -77,6 +78,7 @@ class ShaderField:
         """
         Setter of the filename
         :param file_name
+        :return:
         """
         self.__file_name = file_name
 
@@ -105,6 +107,7 @@ class ShaderField:
         """
         Setter of the enabled field
         :param enabled
+        :return:
         """
         self.__enabled = enabled
         self.refresh_btn()
@@ -112,6 +115,7 @@ class ShaderField:
     def toggle_enabled(self):
         """
         Toggle the enabled field
+        :return:
         """
         self.__enabled = not self.__enabled
         self.refresh_btn()
@@ -119,6 +123,7 @@ class ShaderField:
     def refresh_btn(self):
         """
         Refresh the button appearance
+        :return:
         """
         if self.__btn is not None:
             if self.__enabled:
@@ -143,6 +148,7 @@ class Shader:
         On header enabled field changed
         :param shader_maker
         :param checked
+        :return:
         """
         shader_maker.set_all_shaders_enabled(checked)
 
@@ -152,6 +158,7 @@ class Shader:
         On header field button changed
         :param shader_maker
         :param keyword: button keyword
+        :return:
         """
         Shader.ALL_FIELD_STATE[keyword]["enabled"] = not Shader.ALL_FIELD_STATE[keyword]["enabled"]
         shader_maker.set_all_field_enabled(keyword, Shader.ALL_FIELD_STATE[keyword]["enabled"])
@@ -163,6 +170,7 @@ class Shader:
         Refresh the user interface of the header button
         :param keyword: button keyword
         :param btn
+        :return:
         """
         if Shader.ALL_FIELD_STATE[keyword]["enabled"]:
             color = SHADER_FIELDS[keyword]["color_enabled"]
@@ -180,6 +188,7 @@ class Shader:
         Generate the header interface
         :param shader_maker
         :param lyt: layout
+        :return:
         """
         shader_card = QtWidgets.QHBoxLayout()
         shader_card.setContentsMargins(9, 5, 9, 5)
@@ -215,6 +224,10 @@ class Shader:
         lyt.addWidget(frame_shader_card)
 
     def __init__(self, title):
+        """
+        Constructor
+        :param title:
+        """
         self.__shader_fields = {}
         for keyword, fields_info in SHADER_FIELDS.items():
             self.__shader_fields[keyword] = ShaderField(fields_info["rule"],
@@ -237,6 +250,7 @@ class Shader:
         Setter of the enable field of a keyword
         :param keyword
         :param enabled
+        :return:
         """
         self.__shader_fields[keyword].set_enabled(enabled)
 
@@ -244,6 +258,7 @@ class Shader:
         """
         Setter of the enable field
         :param enabled
+        :return:
         """
         self.__enabled = enabled
         self.__refresh_checkbox()
@@ -251,6 +266,7 @@ class Shader:
     def __refresh_checkbox(self):
         """
         Refresh the checkboxes
+        :return:
         """
         self.__ui_checkbox.setChecked(self.__enabled)
 
@@ -258,6 +274,7 @@ class Shader:
         """
         Load the field according to the folder
         :param folder_path:
+        :return:
         """
         # Get all the texture files of the folder
         files_name_list = [f for f in os.listdir(folder_path) if
@@ -308,6 +325,7 @@ class Shader:
         Populate the ui with the data of the shader
         :param shader_maker
         :param lyt: layout
+        :return:
         """
         shader_card = QtWidgets.QHBoxLayout()
         shader_card.setContentsMargins(5, 5, 5, 5)
@@ -350,6 +368,7 @@ class Shader:
         On enable checkbox changedget the value
         :param shader_maker
         :param checked
+        :return:
         """
         self.__enabled = checked == QtCore.Qt.Checked
         shader_maker.refresh_btn()
@@ -366,6 +385,7 @@ class Shader:
         Generate the base color
         :param in_tex: input texture
         :param out_tex: output texture
+        :return:
         """
         field = self.__shader_fields["Base Color"]
         if field.is_found() and field.is_enabled():
@@ -382,6 +402,7 @@ class Shader:
         Generate the roughness
         :param in_tex: input texture
         :param out_tex: output texture
+        :return:
         """
         field = self.__shader_fields["Roughness"]
         if field.is_found() and field.is_enabled():
@@ -399,6 +420,7 @@ class Shader:
         Generate the normal
         :param in_tex: input texture
         :param out_tex: output texture
+        :return:
         """
         field = self.__shader_fields["Normal"]
         if field.is_found() and field.is_enabled():
@@ -416,6 +438,7 @@ class Shader:
         Generate the metalness
         :param in_tex: input texture
         :param out_tex: output texture
+        :return:
         """
         field = self.__shader_fields["Metalness"]
         if field.is_found() and field.is_enabled():
@@ -453,6 +476,7 @@ class Shader:
         Generate the sss
         :param in_tex: input texture
         :param out_tex: output texture
+        :return:
         """
         field = self.__shader_fields["SSS Amount"]
         if field.is_found() and field.is_enabled():
@@ -470,6 +494,7 @@ class Shader:
         Generate the emissive
         :param in_tex: input texture
         :param out_tex: output texture
+        :return:
         """
         field = self.__shader_fields["Emissive"]
         if field.is_found() and field.is_enabled():

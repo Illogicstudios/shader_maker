@@ -55,6 +55,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __get_dir_name():
         """
         Get the current directory (scene sir or default if not found)
+        :return:
         """
         scene_name = pm.sceneName()
         if len(scene_name) > 0:
@@ -115,6 +116,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __save_prefs(self):
         """
         Save preferences
+        :return:
         """
         size = self.size()
         self.__prefs["window_size"] = {"width": size.width(), "height": size.height()}
@@ -124,6 +126,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __retrieve_prefs(self):
         """
         Retrieve preferences
+        :return:
         """
         if "window_pos" in self.__prefs:
             pos = self.__prefs["window_pos"]
@@ -133,6 +136,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __create_callback(self):
         """
         Create a callback for when new Maya selection
+        :return:
         """
         self.__us_selection_callback = \
             OpenMaya.MEventMessage.addEventCallback("SelectionChanged", self.on_selection_changed)
@@ -140,6 +144,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def hideEvent(self, arg__1: QtGui.QCloseEvent) -> None:
         """
         Remove callback on window hide
+        :return:
         """
         OpenMaya.MMessage.removeCallback(self.__us_selection_callback)
         self.__save_prefs()
@@ -147,6 +152,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __browse_cs_folder(self):
         """
         Function to browse a new folder for the creation part
+        :return:
         """
         dirname = ShaderMaker.__get_dir_name()
 
@@ -159,6 +165,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __browse_us_folder(self):
         """
         Function to browse a new foler for the update part
+        :return:
         """
         dirname = ShaderMaker.__get_dir_name()
 
@@ -171,6 +178,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __create_ui(self):
         """
         Create the ui
+        :return:
         """
         # Reinit attributes of the UI
         self.setMinimumSize(self.__ui_min_width, self.__ui_min_height)
@@ -312,6 +320,7 @@ class ShaderMaker(QtWidgets.QDialog):
         """
         On displacement scale changed retrieve the value
         :param value
+        :return:
         """
         if len(value) > 0:
             self.__displacement_scale = float(value)
@@ -320,6 +329,7 @@ class ShaderMaker(QtWidgets.QDialog):
         """
         On displacement mid changed retrieve the value
         :param value
+        :return:
         """
         if len(value) > 0:
             self.__displacement_mid = float(value)
@@ -327,6 +337,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __refresh_ui(self):
         """
         Refresh the ui according to the model attribute
+        :return:
         """
         # Refresh browser
         self.__ui_cs_folder_path.setText(self.__cs_folder_path)
@@ -339,6 +350,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def refresh_btn(self):
         """
         Refresh the buttons and the radio checkboxes
+        :return:
         """
         nb_shader_enabled = 0
         for shader in self.__cs_shaders:
@@ -355,6 +367,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __refresh_cs_body(self):
         """
         Refresh the body of the creation part
+        :return:
         """
         nb_shaders = len(self.__cs_shaders)
         self.__ui_widget_header.setVisible(nb_shaders > 0)
@@ -378,6 +391,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __refresh_us_body(self):
         """
         Refresh the body of the update part by retrieving the textures and comparing it with the last version
+        :return:
         """
         textures_displayed= {}
         if self.__ui_tree_us_files is None: return
@@ -433,6 +447,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __on_folder_cs_changed(self):
         """
         Refresh UI and model attribute when the fodler of the creation part changes
+        :return:
         """
         folder_path = self.__ui_cs_folder_path.text()
         self.__cs_folder_path = folder_path
@@ -442,6 +457,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __on_folder_us_changed(self):
         """
         Refresh UI and model attribute when the fodler of the update part changes
+        :return:
         """
         folder_path = self.__ui_us_folder_path.text()
         self.__us_folder_path = folder_path
@@ -450,6 +466,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def on_selection_changed(self, *args, **kwargs):
         """
         Function called by the callback of the Maya selection
+        :return:
         """
         self.__generate_us_data()
         self.__refresh_us_body()
@@ -457,6 +474,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __get_us_shading_groups_and_textures(self):
         """
         Get the textures and the shading groups of the selection
+        :return:
         """
         files = []
         selection = pm.ls(sl=True, transforms=True)
@@ -493,6 +511,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __generate_us_data(self):
         """
         Generate model data for the update part
+        :return:
         """
         self.__us_data.clear()
         for texture, shading_group in self.__get_us_shading_groups_and_textures():
@@ -508,6 +527,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __generate_cs_shaders(self):
         """
         Generate the model data for the creatino part
+        :return:
         """
         self.__cs_shaders.clear()
         if not os.path.isdir(self.__cs_folder_path):
@@ -558,6 +578,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __submit_create_shader(self):
         """
         Create the shader according to the method of assignation checked
+        :return:
         """
         pm.undoInfo(openChunk=True)
         no_items_to_assign = False
@@ -631,6 +652,7 @@ class ShaderMaker(QtWidgets.QDialog):
         """
         Delete an existing shader recursively
         :param node:
+        :return:
         """
         for s in node.inputs():
             if pm.objExists(s):
@@ -646,6 +668,7 @@ class ShaderMaker(QtWidgets.QDialog):
     def __submit_update_shader(self):
         """
         Update file path with model datas
+        :return:
         """
         pm.undoInfo(openChunk=True)
         for directory, data in self.__us_data.items():
@@ -697,6 +720,7 @@ class ShaderMaker(QtWidgets.QDialog):
         """
         Set enable field of all shaders
         :param enabled
+        :return:
         """
         for shader in self.__cs_shaders:
             shader.set_enabled(enabled)
@@ -716,6 +740,7 @@ class ShaderMaker(QtWidgets.QDialog):
         Change the Assignation type
         :param assign_type
         :param enabled
+        :return:
         """
         if enabled:
             self.__assign_cs = assign_type
