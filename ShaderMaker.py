@@ -34,6 +34,10 @@ DEFAULT_DISPLACEMENT_SCALE = 0.02
 DEFAULT_DISPLACEMENT_MID = 0
 
 ########################################################################################################################
+# CS mean create shaders part
+# US mean update shaders part
+
+########################################################################################################################
 
 FILE_EXTENSION_SUPPORTED_REGEX = "|".join(FILE_EXTENSION_SUPPORTED)
 
@@ -68,8 +72,6 @@ class Assignation(Enum):
     AssignToSelection = 3
 
 
-# CS mean create shaders part
-# US mean update shaders part
 class ShaderMaker(QtWidgets.QDialog):
 
     @staticmethod
@@ -398,7 +400,10 @@ class ShaderMaker(QtWidgets.QDialog):
                         filename = os.path.basename(filepath)
                         child = QtWidgets.QTreeWidgetItem([filename])
 
-                        base = re.search("(.*)(?:<UDIM>|[0-9]{4})\.(?:" + FILE_EXTENSION_SUPPORTED_REGEX + ")", filename)
+                        base = re.search(r"(.*)(?:<UDIM>|[0-9]{4})\.(?:" + FILE_EXTENSION_SUPPORTED_REGEX + ")", filename)
+                        if base is None:
+                            print_warning("filename \""+filename+"\" not valid as a texture")
+                            continue
                         match = base.groups()[0]
                         regex = match.replace(".", "\.") + "((?:[0-9]{0,4})\.(?:" + FILE_EXTENSION_SUPPORTED_REGEX + "))"
                         new_file_path = self.__us_find_file_in_directory(
