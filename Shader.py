@@ -3,8 +3,6 @@ from os.path import isfile, join
 import shader_maker.ShaderMaker as ShaderMaker
 from .ShaderMaker import *
 
-from .IdealFlowLayout import IdealFlowLayout
-
 ########################################################################################################################
 
 SHADER_FIELDS_REGEX = {
