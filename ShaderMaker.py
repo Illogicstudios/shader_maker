@@ -78,7 +78,7 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__prefs = Prefs(_FILE_NAME_PREFS)
 
         # Model attributes
-        self.__cs_folder_path = "I:/battlestar_2206/assets/ch_panda/textures/02/panda_02_textures" #TODO
+        self.__cs_folder_path = ""
         self.__cs_shaders = []
         self.__cs_seleted_shaders = []
         self.__assign_cs = Assignation.AutoAssign
