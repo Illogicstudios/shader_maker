@@ -33,7 +33,11 @@ FILE_EXTENSION_SUPPORTED = ["exr", "jpg", "jpeg", "tif", "png", "tx"]
 DEFAULT_DISPLACEMENT_SCALE = 0.02
 DEFAULT_DISPLACEMENT_MID = 0
 
+SHADER_FIELDS = \
+    {1: "base_color", 2: "normal", 3: "displacement", 4: "roughness", 5: "metalness", 6: "emissive", 7: "sss"}
+
 ########################################################################################################################
+
 # CS mean create shaders part
 # US mean update shaders part
 
@@ -42,6 +46,7 @@ DEFAULT_DISPLACEMENT_MID = 0
 FILE_EXTENSION_SUPPORTED_REGEX = "|".join(FILE_EXTENSION_SUPPORTED)
 
 from .Shader import Shader
+
 
 class Assignation(Enum):
     NoAssign = 1
@@ -73,8 +78,9 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__prefs = Prefs(_FILE_NAME_PREFS)
 
         # Model attributes
-        self.__cs_folder_path = ""
+        self.__cs_folder_path = "I:/battlestar_2206/assets/ch_panda/textures/02/panda_02_textures" #TODO
         self.__cs_shaders = []
+        self.__cs_seleted_shaders = []
         self.__assign_cs = Assignation.AutoAssign
         self.__us_folder_path = ""
         self.__us_data = {}
@@ -154,11 +160,13 @@ class ShaderMaker(QtWidgets.QDialog):
         Function to browse a new folder for the creation part
         :return:
         """
-        dirname = ShaderMaker.__get_dir_name()
+        if len(self.__cs_folder_path)>0:
+            dirname = self.__cs_folder_path
+        else:
+            dirname = ShaderMaker.__get_dir_name()
 
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(
-            self, "Select Directory",
-            dirname)
+            self, "Select Directory", dirname)
         if len(folder_path) > 0 and folder_path != self.__cs_folder_path:
             self.__ui_cs_folder_path.setText(folder_path)
 
@@ -167,7 +175,11 @@ class ShaderMaker(QtWidgets.QDialog):
         Function to browse a new foler for the update part
         :return:
         """
-        dirname = ShaderMaker.__get_dir_name()
+
+        if len(self.__us_folder_path)>0:
+            dirname = self.__us_folder_path
+        else:
+            dirname = ShaderMaker.__get_dir_name()
 
         folder_path = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select Directory",
@@ -230,19 +242,25 @@ class ShaderMaker(QtWidgets.QDialog):
         browse_cs_btn.clicked.connect(partial(self.__browse_cs_folder))
         folder_cs_lyt.addWidget(browse_cs_btn)
 
-        # Layout ML.1.2 : Header
-        self.__ui_widget_header = QtWidgets.QWidget()
-        header_shaders_cs_lyt = QtWidgets.QVBoxLayout(self.__ui_widget_header)
-        header_shaders_cs_lyt.setMargin(0)
-        Shader.generate_header(self, header_shaders_cs_lyt)
-        self.__ui_widget_header.setVisible(True)
-        cs_lyt.addWidget(self.__ui_widget_header)
+        # Layout ML.1.2 : Shaders
+        self.__ui_shaders_cs_list = QTableWidget(0, 8)
+        self.__ui_shaders_cs_list.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Preferred)
+        self.__ui_shaders_cs_list.verticalHeader().hide()
+        self.__ui_shaders_cs_list.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.__ui_shaders_cs_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.__ui_shaders_cs_list.setHorizontalHeaderLabels(
+            ["Shader name", "Base Color", "Normal", "Displacement", "Roughness", "Metalness", "Emissive", "SSS"])
+        self.__ui_shaders_cs_list.setShowGrid(False)
+        self.__ui_shaders_cs_list.setAlternatingRowColors(True)
+        horizontal_header = self.__ui_shaders_cs_list.horizontalHeader()
+        horizontal_header.sectionClicked.connect(self.__on_clicked_header_cs_list)
+        horizontal_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        horizontal_header.setSectionResizeMode(0, QHeaderView.Stretch)
+        self.__ui_shaders_cs_list.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.__ui_shaders_cs_list.itemSelectionChanged.connect(self.__on_cs_list_item_selected)
+        cs_lyt.addWidget(self.__ui_shaders_cs_list,1)
 
-        # Layout ML.1.3 : Shaders
-        self.__ui_shaders_cs_lyt = QtWidgets.QVBoxLayout()
-        cs_lyt.addLayout(self.__ui_shaders_cs_lyt)
-
-        # Layout ML.1.4 : Displacement scale
+        # Layout ML.1.3 : Displacement scale
         displacement_scale_form = QtWidgets.QFormLayout()
         validator = QtGui.QRegExpValidator(QtCore.QRegExp(r"[0-9]+(\.[0-9]*)?"))
         displacement_scale_edit = QtWidgets.QLineEdit(str(self.__displacement_scale))
@@ -255,7 +273,7 @@ class ShaderMaker(QtWidgets.QDialog):
         displacement_scale_form.addRow(QtWidgets.QLabel("Displacement mid"), displacement_mid_edit)
         cs_lyt.addLayout(displacement_scale_form)
 
-        # Layout ML.1.5 : Submit creation
+        # Layout ML.1.4 : Submit creation
         submit_creation_lyt = QtWidgets.QHBoxLayout()
         submit_creation_lyt.setAlignment(QtCore.Qt.AlignCenter)
         submit_creation_lyt.setMargin(5)
@@ -343,19 +361,16 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__ui_cs_folder_path.setText(self.__cs_folder_path)
         self.__ui_us_folder_path.setText(self.__us_folder_path)
 
-        self.refresh_btn()
+        self.__refresh_btn()
         self.__refresh_cs_body()
         self.__refresh_us_body()
 
-    def refresh_btn(self):
+    def __refresh_btn(self):
         """
         Refresh the buttons and the radio checkboxes
         :return:
         """
-        nb_shader_enabled = 0
-        for shader in self.__cs_shaders:
-            if shader.is_enabled():
-                nb_shader_enabled += 1
+        nb_shader_enabled = len(self.__cs_seleted_shaders)
         # Refresh the buttons
         if self.__ui_cs_submit_btn is not None:
             self.__ui_cs_submit_btn.setEnabled(nb_shader_enabled > 0)
@@ -364,29 +379,45 @@ class ShaderMaker(QtWidgets.QDialog):
         if self.__assign_cs == Assignation.AssignToSelection and nb_shader_enabled > 1:
             self.__auto_assign_radio.setChecked(True)
 
+    @staticmethod
+    def __generate_field_table_widget(field):
+        """
+        Generate a widget containing a Checkbox according to a shader field
+        :param field
+        :return: widget
+        """
+        cb = QCheckBox()
+        is_found = field.is_found()
+        cb.setEnabled(is_found)
+        cb.setChecked(is_found and field.is_enabled())
+        cb.stateChanged.connect(field.toggle_enabled)
+        widget_wrapper = QWidget()
+        layout = QHBoxLayout()
+        layout.addStretch()
+        layout.addWidget(cb)
+        layout.addStretch()
+        widget_wrapper.setLayout(layout)
+        return widget_wrapper
+
     def __refresh_cs_body(self):
         """
         Refresh the body of the creation part
         :return:
         """
-        nb_shaders = len(self.__cs_shaders)
-        self.__ui_widget_header.setVisible(nb_shaders > 0)
-        if self.__ui_shaders_cs_lyt is not None:
-            clear_layout(self.__ui_shaders_cs_lyt)
-            list_shaders_lyt = QtWidgets.QVBoxLayout()
-            list_shaders_lyt.setContentsMargins(2, 2, 2, 2)
-            list_shaders_lyt.setSpacing(2)
-            list_shaders_lyt.setAlignment(QtCore.Qt.AlignTop)
-            scroll_area = QtWidgets.QScrollArea()
-            scroll_area.setWidgetResizable(True)
-            list_shaders_lyt.setAlignment(QtCore.Qt.AlignTop)
-            scroll_area_widget = QtWidgets.QWidget()
-            scroll_area.setWidget(scroll_area_widget)
-            scroll_area_widget.setLayout(list_shaders_lyt)
-            self.__ui_shaders_cs_lyt.addWidget(scroll_area)
-            if nb_shaders > 0:
-                for shader in self.__cs_shaders:
-                    shader.populate(self, list_shaders_lyt)
+        self.__ui_shaders_cs_list.setRowCount(0)
+        row_index = 0
+        for shader in self.__cs_shaders:
+            self.__ui_shaders_cs_list.insertRow(row_index)
+            # Title
+            title = shader.get_title()
+            elem_item = QTableWidgetItem(" "+title)
+            elem_item.setData(Qt.UserRole, shader)
+            self.__ui_shaders_cs_list.setItem(row_index, 0, elem_item)
+            # Fields
+            for index, field_keyword in SHADER_FIELDS.items():
+                self.__ui_shaders_cs_list.setCellWidget(
+                    row_index, index, self.__generate_field_table_widget(shader.get_field(field_keyword)))
+            row_index+=1
 
     def __refresh_us_body(self):
         """
@@ -443,6 +474,36 @@ class ShaderMaker(QtWidgets.QDialog):
             self.__ui_us_submit_btn.setEnabled(
                 len(self.__us_data) > 0 and os.path.isdir(self.__us_folder_path) and update_btn_enabled)
             self.__ui_us_submit_btn.setEnabled(True)
+    def __on_cs_list_item_selected(self):
+        """
+        On selection in the table changed retrieve shaders
+        :return:
+        """
+        self.__cs_seleted_shaders.clear()
+        rows = self.__ui_shaders_cs_list.selectionModel().selectedRows()
+        for row in rows:
+            self.__cs_seleted_shaders.append(self.__ui_shaders_cs_list.item(row.row(), 0).data(Qt.UserRole))
+        self.__refresh_btn()
+
+    def __on_clicked_header_cs_list(self, index):
+        """
+        Toggle the enable state of the column
+        :param index: index column
+        :return:
+        """
+        print(index)
+        if index != 0:
+            enabled = True
+            keyword = SHADER_FIELDS[index]
+            for shader in self.__cs_shaders:
+                if not shader.get_field(keyword).is_enabled():
+                    enabled = False
+                    break
+            for shader in self.__cs_shaders:
+                field = shader.get_field(keyword)
+                if field.is_found():
+                    field.set_enabled(not enabled)
+            self.__refresh_cs_body()
 
     def __on_folder_cs_changed(self):
         """
@@ -463,6 +524,7 @@ class ShaderMaker(QtWidgets.QDialog):
         self.__us_folder_path = folder_path
         self.__generate_us_data()
         self.__refresh_ui()
+
     def on_selection_changed(self, *args, **kwargs):
         """
         Function called by the callback of the Maya selection
@@ -588,8 +650,9 @@ class ShaderMaker(QtWidgets.QDialog):
             to_reassign = {}
             selection = pm.ls(materials=True)
             for s in selection:
-                for shader in self.__cs_shaders:
-                    if shader.is_enabled() and shader.get_title() == s.name():
+                for shader in self.__cs_seleted_shaders:
+                    print(shader.get_title() , s.name())
+                    if shader.get_title() == s.name():
                         shading_groups = s.listConnections(type="shadingEngine")
                         for shading_group in shading_groups:
                             if shading_group not in to_reassign:
@@ -602,10 +665,9 @@ class ShaderMaker(QtWidgets.QDialog):
                     self.__delete_existing_shader(shading_group)
 
                 shading_nodes = {}
-                for shader in self.__cs_shaders:
-                    if shader.is_enabled():
-                        arnold_node, displacement_node = shader.generate_shading_nodes(shading_values)
-                        shading_nodes[shader.get_title()] = {arnold_node, displacement_node}
+                for shader in self.__cs_seleted_shaders:
+                    arnold_node, displacement_node = shader.generate_shading_nodes(shading_values)
+                    shading_nodes[shader.get_title()] = {arnold_node, displacement_node}
 
                 for shading_group, shader_title in to_reassign.items():
                     arnold_node, displacement_node = shading_nodes[shader_title]
@@ -620,12 +682,11 @@ class ShaderMaker(QtWidgets.QDialog):
                 # Create a new shading group
                 shading_group = pm.sets(name="SG", empty=True, renderable=True, noSurfaceShader=True)
                 # Generate new shader and assign to shading group
-                for shader in self.__cs_shaders:
-                    if shader.is_enabled():
-                        arnold_node, displacement_node = shader.generate_shading_nodes(shading_values)
-                        arnold_node.outColor >> shading_group.surfaceShader
-                        if displacement_node is not None:
-                            displacement_node.displacement >> shading_group.displacementShader
+                for shader in self.__cs_seleted_shaders:
+                    arnold_node, displacement_node = shader.generate_shading_nodes(shading_values)
+                    arnold_node.outColor >> shading_group.surfaceShader
+                    if displacement_node is not None:
+                        displacement_node.displacement >> shading_group.displacementShader
                 # Assign the object in the shading group
                 for obj in selection:
                     pm.sets(shading_group, forceElement=obj)
@@ -633,19 +694,18 @@ class ShaderMaker(QtWidgets.QDialog):
             dtx = 1
             i = 0
             # Generate new shader and assign each to an object
-            for shader in self.__cs_shaders:
-                if shader.is_enabled():
-                    obj = pm.sphere()[0]
-                    obj.translate.set([dtx * i, 0, 0])
+            for shader in self.__cs_seleted_shaders:
+                obj = pm.sphere()[0]
+                obj.translate.set([dtx * i, 0, 0])
 
-                    shading_group = pm.sets(name=shader.get_title() + "_sg", empty=True, renderable=True,
-                                         noSurfaceShader=True)
-                    arnold_node, displacement_node = shader.generate_shading_nodes(shading_values)
-                    arnold_node.outColor >> shading_group.surfaceShader
-                    if displacement_node is not None:
-                        displacement_node.displacement >> shading_group.displacementShader
-                    pm.sets(shading_group, forceElement=obj)
-                    i += 1
+                shading_group = pm.sets(name=shader.get_title() + "_sg", empty=True, renderable=True,
+                                     noSurfaceShader=True)
+                arnold_node, displacement_node = shader.generate_shading_nodes(shading_values)
+                arnold_node.outColor >> shading_group.surfaceShader
+                if displacement_node is not None:
+                    displacement_node.displacement >> shading_group.displacementShader
+                pm.sets(shading_group, forceElement=obj)
+                i += 1
         pm.undoInfo(closeChunk=True)
 
     def __delete_existing_shader(self, node):
@@ -655,15 +715,14 @@ class ShaderMaker(QtWidgets.QDialog):
         :return:
         """
         for s in node.inputs():
-            if pm.objExists(s):
-                if s.type() != "transform":
-                    self.__delete_existing_shader(s)
-                    try:
-                        if "default" not in s.name():
-                            pm.delete(s)
-                    except:
-                        pass
-        print("Existing shaders deleted")
+            if not pm.objExists(s) or s.type() == "transform": continue
+            self.__delete_existing_shader(s)
+            try:
+                if "default" not in s.name():
+                    print("Existing shaders deleted : "+s.name())
+                    pm.delete(s)
+            except:
+                pass
 
     def __submit_update_shader(self):
         """
